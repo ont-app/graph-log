@@ -36,6 +36,25 @@ Contains logging costructs addressed in the graph-log code not found in the
 rlog vocabulary."
   })
 
+(def alignment-to-rlog
+  "Many constructs in glog were appropriated from rlog. Using the sameAs
+  relation to keep the namepaces simple.
+  Breaking this out into its own graph to keep the log models small."
+  (igraph/add (graph/make-graph)
+       [
+        [:glog/ALL :owl/sameAs :rlog/ALL]
+        [:glog/DEBUG :owl/sameAs :rlog/DEBUG]
+        [:glog/ERROR :owl/sameAs :rlog/ERROR]
+        [:glog/Entry :owl/sameAs :rlog/Entry]
+        [:glog/FATAL :owl/sameAs :rlog/FATAL]
+        [:glog/INFO :owl/sameAs :rlog/INFO]
+        [:glog/Level :owl/sameAs :rlog/Level]
+        [:glog/OFF :owl/sameAs :rlog/OFF]
+        [:glog/TRACE :owl/sameAs :rlog/TRACE]
+        [:glog/WARN :owl/sameAs :rlog/WARN]
+        [:glog/level :owl/sameAs :rlog/level]
+        ]))
+
 (def ontology
   (let [g (graph/make-graph)]
     (voc/clear-caches!)
@@ -66,62 +85,57 @@ the contents of the graph.
        :rdfs/comment "Asserts the number of log entries in this graph."
        ]
       [:glog/Entry
-       :owl/sameAs :rlog/Entry
        :rdfs/comment "Refers to an entry in a log"
        ]
       [:glog/level
        :rdfs/domain :glog/Entry
        :rdfs/range :glog/Level
        :rdfs/comment "Asserts the Level of an Entry type"
-       :owl/sameAs :rlog/level
        ]
       [:glog/Level
-       :owl/sameAs :rlog/Level
+       :rdf/type :rdfs/Class
+       :rdfs/comment "Refers to a logging level like :glog/WARN"
        ]
       [:glog/ALL
        :rdf/type :glog/Level
        :glog/priority 0
        :rdfs/comment "Signals that the log should record all log statements"
-       :owl/sameAs :rlog/ALL
        ]
       [:glog/TRACE
        :rdf/type :glog/Level
        :glog/priority 1
        :rdfs/comment "Finer grained informational events than DEBUG"
-       :owl/sameAs :rlog/TRACE
        ]
       [:glog/DEBUG
        :rdf/type :glog/Level
        :glog/priority 2
-       :owl/sameAs :rlog/DEBUG
+       :rdfs/comment "A standard logging level"
        ]
       [:glog/INFO
        :rdf/type :glog/Level
        :glog/priority 3
-       :owl/sameAs :rlog/INFO
+       :rdfs/comment "A standard logging level"
        ]
       [:glog/WARN
        :rdf/type :glog/Level
        :glog/priority 4
-       :owl/sameAs :rlog/WARN
+       :rdfs/comment "A standard logging level"
        ]
       [:glog/ERROR
        :rdf/type :glog/Level
        :glog/priority 5
-       :owl/sameAs :rlog/ERROR
+       :rdfs/comment "A standard logging level"
        ]
       [:glog/FATAL
        :rdf/type :glog/Level
        :glog/priority 6
-       :owl/sameAs :rlog/FATAL
+       :rdfs/comment "A standard logging level"
        ]
       [:glog/OFF
        :rdf/type :glog/Level
        :glog/priority 7
        :rdfs/comment "Signals that the log should not record events."
-       :owl/sameAs :rlog/OFF
        ]
-      
       [:glog/executionOrder
        :rdf/type :rdf/Property
        :rdfs/domain :glog/Entry
