@@ -9,7 +9,8 @@
                  [lein-doo "0.1.11"]
                  [com.taoensso/timbre "4.10.0"] ;; basic logging
                  ;;
-                 [ont-app/igraph "0.1.4-SNAPSHOT"] 
+                 [ont-app/igraph "0.1.4-SNAPSHOT"]
+                 [ont-app/igraph-vocabulary "0.1.0-SNAPSHOT"] 
                  [ont-app/vocabulary "0.1.0-SNAPSHOT"]
                  ]
   :plugins [[lein-codox "0.10.6"]
