@@ -15,7 +15,7 @@
   "http://persistence.uni-leipzig.org/nlp2rdf/ontologies/rlog#"
   :dc/description "RLOG - an RDF Logging Ontology"
   :foaf/homepage
-  "https://persistence.uni-leipzig.org/nlp2rdf/ontologies/rlog/rlog.html#d4e91"
+  "https://persistence.uni-leipzig.org/nlp2rdf/ontologies/rlog/rlog.html"
   :dcat/downloadURL
   "https://github.com/NLP2RDF/ontologies/blob/master/rlog/rlog.ttl"
   :voc/appendix
@@ -157,6 +157,38 @@ Current time in milliseconds at time Entry was created."
 Refers to a kwi whose name should inform the minting of each new 
 Entry's URI, in addition to its class and execution order, the better to 
 understand at a glance what the log entry is about."
+       ]
+      [:glog/message
+       :rdfs/subClassOf :rdf/Property
+       :rdfs/domain :glog/Entry
+       :rdfs/range :rdf/Literal
+       :rdfs/comment "
+A string or mustache template to print to the standard logging stream
+via taesano.timbre. The flattened description of the entry will be
+applied to its value to resolve template {{parameters}}.
+"
+       ]
+      ;; ARCHIVING THE LOG GRAPH ON RESET
+      [:glog/ArchiveFn
+       :rdf/type :igraph/Functon
+       :rdfs/comment "A function [g] -> archive-path, with side-effect of saving
+the current log before resetting. Only invoked if :igraph/compiledAs is 
+asserted with an executable function."
+       ]
+      [:glog/archivePathFn
+       :rdfs/domain :igraph/Graph
+       :rdfs/comment "Asserts a function [g] -> archive-path to which
+the current state of the log may be written before resetting."
+       ]
+      [:glog/archiveDirectory
+       :rdfs/domain :igraph/Graph
+       :rdfs/comment "Asserts the directory portion of the archive-path used 
+by archivePathFn. (only applicable if the local file system is used)"
+       ]
+      [:glog/continuingFrom
+       :rdfs/domain :igraph/Graph
+       :rdfs/comment "Asserts the archive-path of the log previously archived 
+on the last reset."
        ]
       ])))
     

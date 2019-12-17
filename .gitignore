@@ -1,6 +1,7 @@
 /target
 /classes
 /checkouts
+resources/test/
 profiles.clj
 pom.xml
 pom.xml.asc
@@ -11,3 +12,6 @@ pom.xml.asc
 .hgignore
 .hg/
 *~
+ont_app.graph_log.core$archive*
+
+

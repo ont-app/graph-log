@@ -6,8 +6,11 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.520"]
                  [org.clojure/spec.alpha "0.2.176"]
-                 [lein-doo "0.1.11"]
+                 ;; 3rd party libraries
                  [com.taoensso/timbre "4.10.0"] ;; basic logging
+                 [cljstache "2.0.4"]
+                 [lein-doo "0.1.11"] ;; cljs testing
+                 ;; [selmer "1.12.12"] ;; templating 
                  ;;
                  [ont-app/igraph "0.1.4-SNAPSHOT"]
                  [ont-app/igraph-vocabulary "0.1.0-SNAPSHOT"] 

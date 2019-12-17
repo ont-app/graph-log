@@ -1,10 +1,12 @@
 (ns ont-app.graph-log.core
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.set :as set]
+   #?(:clj [clojure.java.io :as io])
    ;; 3rd party libraries
    [taoensso.timbre :as timbre]
+   ;;[selmer.parser :as selmer]
+   [cljstache.core :as stache]
    ;; ont-app libraries
    [ont-app.igraph.core :as igraph
     :refer [add
@@ -15,6 +17,7 @@
             subjects
             subtract
             traversal-comp
+            traverse
             traverse-link
             ]]
    [ont-app.graph-log.ont :as ont]
@@ -35,25 +38,6 @@
 
 (def ontology ont/ontology)
 
-
-;; ontology
-;; :glog/timestamp - currentTimeMillis at time the entry is created
-;; :glog/executionOrder - the order in which the entry was entered
-;; :glog/InformsUri - properties that should be added to generated entry names.
-;; :rlog/date
-;; :rlog/Entry
-;; :rlog/
-
-;; TODO: support rlog:OFF, and other log levels like INFO, etc.
-
-;; FUN WITH READER MACROS
-
-#?(:cljs
-   (enable-console-print!)
-   )
-
-;; NO READER MACROS BEYOND THIS POINT
-
 (def the igraph/unique)
 
 (def empty-graph (make-graph))
@@ -62,9 +46,78 @@
 
 (def default-log-level :glog/INFO)
 
+
+;; FUN WITH READER MACROS
+
+#?(:cljs
+   (enable-console-print!)
+   )
+
+(defn timestamp []
+  #?(:clj
+     (System/currentTimeMillis)
+     )
+  #?(:cljs
+     (system-time)))
+
+;; ARCHIVING TO THE LOCAL FILE SYSTEM IN CLJ
+
+(declare entries)
+#?(:clj
+   (defn archive-path [g]
+  "Returns a canonical name for an archive file for a log
+Where
+<g> is a log-graph
+
+Vocabulary:
+:glog/archiveDirectory -- asserts the name of the directory to which logs
+  should be achived.
+  Defaults to '/tmp'
+"
+  (let [es (entries g)
+        date-string (fn [i]
+                      (str (if (= (count es) 0)
+                             (timestamp)
+                             (the (g (es i) :glog/timestamp)))))
+
+                      
+        ]
+    (stache/render
+     "{{directory}}/{{start}}-{{stop}}.edn"
+     {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
+                     "/tmp")
+      :start (date-string 0)
+      :stop (date-string (count es))
+      })))
+   )
+
+#?(:clj
+   (defn save-to-archive [g]
+     (letfn [(remove-compiled [g s p o]
+               ;; Don't wanna choke the reader
+               ;; when we slurp 
+               (if (= p :igraph/compiledAs)
+                 g
+                 (add g [s p o])))
+             (archive-path-fn [g]
+               (or (the (g :glog/archivePathFn :igraph/compiledAs))
+                   archive-path))
+           
+             ]
+
+       (igraph/write-to-file
+        (archive-path-fn g)
+        (reduce-spo remove-compiled empty-graph g)))))
+
+
+;; NO READER MACROS BEYOND THIS POINT
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR LOG MAINTENANCE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (defn log-reset!
   "Side-effect: resets @log-graph to `initial-graph`
   Side-effect: if (initial-graph:glog/SaveToFn igraph/compiledAs <path-fn>),
@@ -77,28 +130,20 @@
   ([]
    (log-reset! ontology))
   ([initial-graph]
-   (when-let [save-to-fn
-              (the (@log-graph :glog/SaveToFn :igraph/compiledAs))]
+   (let [archive-file (atom nil)]
+     (when-let [archive-fn
+                (the (@log-graph :glog/ArchiveFn :igraph/compiledAs))]
+       (reset! archive-file (archive-fn (difference @log-graph
+                                                      initial-graph))))
      ;; Save the previous log to the path provided by SaveToFn
-     (let [remove-compiled (fn [g s p o]
-                             ;; Don't wanna choke the reader
-                             ;; if we slurp 
-                             (if (= p :igraph/compiledAs)
-                               g
-                               (add g [s p o])))
-           output-path (str/replace (save-to-fn @log-graph)
-                                    #"^file://" "")
-           ]
-       (io/make-parents output-path)
-       (spit output-path
-             (with-out-str
-               (pprint
-                (igraph/normal-form (reduce-spo
-                                     remove-compiled
-                                     empty-graph
-                                     (difference @log-graph ontology))))))))
+     (timbre/warn "archive file:" @archive-file)
+     (reset! log-graph (if @archive-file
+                         (add initial-graph
+                              [:glog/LogGraph
+                               :glog/continuingFrom
+                               @archive-file])
+                         initial-graph)))))
 
-   (reset! log-graph initial-graph)))
 
 (defn set-level! [element level]
   "Side-effect, adds `args` to entry for `element` in log-graph
@@ -132,9 +177,25 @@ Where
   ([g] (or (the (g :glog/LogGraph :glog/entryCount))
            0)))
 
+(defn log-message [message entry-id]
+  "Side-effect: writes a message to the timbre log stream.
+Where
+<message> may be a selmer template, in which case the flattened
+  description of <entry-id> will be applied.
+<entry-id> is a KWI s.t. (@log-graph entry-id :glog/message <message>)
+"
+  (let [desc (igraph/flatten-description (@log-graph entry-id))
+        level-p (igraph/traversal-comp [(traverse-link :rdf/type)
+                                        (traverse-link :glog/level)])
+        level (or (the (@log-graph entry-id level-p))
+                  :debug)
+        ]
+    (timbre/log (keyword (str/lower-case (name level)))
+                (stache/render message desc))))
+
 (defn log! [entry-type & args]
   "Side-effect: adds an entry to log-graph for <id> minted per `entry-type` and `args`
-Returns: <id>
+Returns: <id> or nil (if no entry was made)
 Where
 <id> is a KWI minted for <entry-type> and whatever <arg-kwi>s are of 
   :rdf/type :glog/InformsUri in @log-graph.
@@ -175,7 +236,13 @@ Where
               ;; This is called in a swap!
               (let  [execution-order (entry-count)
                      maybe-add-type (fn [g]
-                                      (if (g entry-type)
+                                      (if (g entry-type :rdfs/subClassOf)
+                                        g
+                                        (add g
+                                             [entry-type
+                                              :rdfs/subClassOf :glog/Entry])))
+                     maybe-add-level (fn [g]
+                                      (if (g entry-type :glog/level)
                                         g
                                         (add g [entry-type
                                                 :glog/level
@@ -186,7 +253,6 @@ Where
                                                 ])))
                      ]
                                         
-                                        
                 (reset! id-atom
                         (apply mint-kwi (reduce collect-if-informs-uri
                                                 [entry-type
@@ -195,16 +261,17 @@ Where
                                                 (partition 2 args))))
                 (-> g
                     (maybe-add-type)
+                    (maybe-add-level)
                     (assert-unique :glog/LogGraph
                                    :glog/entryCount
                                    (inc (entry-count)))
                     (add (reduce conj
                                  [@id-atom :rdf/type entry-type
-                                   :glog/timestamp (System/currentTimeMillis)
+                                   :glog/timestamp (timestamp) 
                                    :glog/executionOrder execution-order
                                    ]
                                  args))
-                    (add [:GraphLog :glog/hasEntry @id-atom]))))
+                    (add [:glog/LogGraph :glog/hasEntry @id-atom]))))
             
             ]
       (let [level-priority (traversal-comp [(traverse-link :glog/level)
@@ -222,10 +289,16 @@ Where
                                      default-log-level
                                      :glog/priority)))
             ]
-        (when (>= entry-priority log-priority)
+        (when (and (>= entry-priority log-priority)
+                   (not (@log-graph entry-type :glog/level :glog/OFF)))
           (let [id-atom (atom nil)]
             (swap! log-graph (partial add-entry id-atom) args)
-            (timbre/debug "Graph-logging " @id-atom)
+            (if-let [messages (@log-graph @id-atom :glog/message)]
+              (doseq [message messages]
+                (log-message message @id-atom))
+              ;; else
+              (timbre/debug "Graph-logging " @id-atom))
+            
             ;; TODO: support rdf/type :glog/Verbose
             @id-atom
             ))))))
@@ -258,10 +331,21 @@ Where
                               [:glog/value value])))
    value))
 
+(defn log-value-at-level! [level]
+  "Returns a logging function with logging level `level`"
+  (fn [entry-type & args]
+    (apply log-value! (reduce conj [entry-type :glog/level level] args))))
+
+(def value-debug! (log-value-at-level! :glog/DEBUG))
+(def value-info!  (log-value-at-level! :glog/INFO))
+(def value-warn!  (log-value-at-level! :glog/WARN))
+(def value-error! (log-value-at-level! :glog/ERROR))
+(def value-fatal! (log-value-at-level! :glog/FATAL))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR VIEWING LOG CONTENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn entries
   "Returns [<entry-id>, ...] for `entry-type` in `g` ordered by :glog/executionOrder
@@ -301,7 +385,9 @@ Where
   ([i]
    (ith-entry @log-graph i))
   ([g i]
-   ((entries g :all) i)))
+   (let [e ((entries g :all) i)]
+     [e (g e)])))
+     
 
 (defn show
   "Returns contents of `entry-id` for optional `g` 
@@ -327,9 +413,9 @@ Where
    (query g q)))
 
 ^:traversal-fn
-(defn search-backward [test g c found q]
+(defn search [inc-or-dec test g c found q]
   
-  "Returns [c found [previous-index]] for `test` of <i>th descending entry per `q`
+  "Returns [c found [previous-index]] for `test` of <i>th  entry per `q` and inc-or-dec
   See also the IGraph docs for traversal functions.
 
   Where
@@ -339,6 +425,7 @@ Where
   <test> := fn [entry] -> boolean
   <q> := [<entry> or <i> [i] if still searching or [] if found. decrementing per iteration
   <i> is the execution order to test
+  <inc-or-dec> :~ #{inc dec}, inc to search forward dec to search backward.
   <entry> is the <i>th entry in <g>
   <g> is a log-graph.
 NOTE: typically this is used as a partial application over <test>
@@ -346,27 +433,50 @@ NOTE: typically this is used as a partial application over <test>
                                  nil
                                  [<entry-id>])
 "
-  (let [entries (or (:entries c)
-                    (entries g))
+  (let [_entries (or (:entries c)
+                     (entries g :all))
         i-or-entry (first q)
         i (if (number? i-or-entry)
             i-or-entry
             (the (g i-or-entry :glog/executionOrder)))
         entry (if (number? i-or-entry)
-                (entries i-or-entry)
+                (if (< -1 i-or-entry (count _entries))
+                  (_entries i-or-entry)
+                  :out-of-bounds)
                 i-or-entry)
-        found? (test entry)
+        found? (and (not (= :out-of-bounds entry))
+                    (test g entry))
         ]
-    [(assoc c :entries entries)
+    [(assoc c :entries _entries)
      ,
      (if found? entry)
      ,
-     (if (or found? (<= i 0))
+     (if (or found?
+             (= entry :out-of-bounds)
+             (if (= inc-or-dec dec)
+               (<= i 0)
+               (>= i (dec (count _entries)))))
        []
-       (conj (rest q) (dec i)))
+       (conj (rest q) (inc-or-dec i)))
      ]))
 
+(defn search-backward 
+  "Searches the log backward for a match to `test`"
+  ([test start]
+   (search-backward @log-graph test start))
+  
+  ([g test start]
+   (traverse g (partial search dec test) nil [start])))
 
+(defn search-forward 
+  "Searches the log forward for a match to `test`"
+  ([test start]
+   (search-forward @log-graph test start))
+
+  ([g test start]
+   (traverse g (partial search inc test) nil [start])))
+
+;; TODO: add support to search archived logs following continuingFrom links.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UTILITIES SUPPORTING COMPARISON OF TWO LOGS
@@ -382,7 +492,7 @@ NOTE: typically this is used as a partial application over <test>
    (letfn [(remove-timestamp [g' entry-id]
              (let [ts (the (g entry-id :glog/timestamp))
                    ]
-               (subtract g' [s :glog/timestamp ts])))
+               (subtract g' [entry-id :glog/timestamp ts])))
            ]
      (reduce remove-timestamp
              g
