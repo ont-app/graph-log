@@ -82,6 +82,7 @@ Vocabulary:
 
                       
         ]
+    #dbg
     (stache/render
      "{{directory}}/{{start}}-{{stop}}.edn"
      {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
@@ -99,15 +100,18 @@ Vocabulary:
                (if (= p :igraph/compiledAs)
                  g
                  (add g [s p o])))
-             (archive-path-fn [g]
+             (get-archive-path-fn [g]
                (or (the (g :glog/archivePathFn :igraph/compiledAs))
                    archive-path))
            
              ]
+       (let [archive-path-fn (get-archive-path-fn g)
+             archive-path (archive-path-fn g)
+             g (reduce-spo remove-compiled empty-graph g)
+             ]
 
-       (igraph/write-to-file
-        (archive-path-fn g)
-        (reduce-spo remove-compiled empty-graph g)))))
+       (igraph/write-to-file archive-path g)
+        ))))
 
 
 ;; NO READER MACROS BEYOND THIS POINT
