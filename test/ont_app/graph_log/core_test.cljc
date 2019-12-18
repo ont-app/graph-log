@@ -137,48 +137,49 @@
            []))
     (glog/log-reset!)
     )
-  (testing "Archiving"
-    (glog/log-reset! (add glog/ontology
-                          [[:glog/ArchiveFn 
-                            :igraph/compiledAs glog/save-to-archive
-                            ]
-                           [:glog/LogGraph 
-                            :glog/archiveDirectory "/tmp/myAppLog"
-                            ]]))
-    (glog/info! :my-log/Test-archiving)
-    (glog/log-reset!)
-    (is (= (-> 
-            (clojure.java.io/as-file 
-             (igraph/unique
-              (@glog/log-graph :glog/LogGraph :glog/continuingFrom)))
-            (.exists))
-           true))
-    (let [restored
-          (let [g (make-graph)] 
-            (igraph/read-from-file 
-             g 
-             (igraph/unique 
-              (@glog/log-graph :glog/LogGraph :glog/continuingFrom))))
-          restored (igraph/subtract restored
-                             [:my-log/Test-archiving_0 :glog/timestamp])
-          ]
-      (is (= (igraph/normal-form restored)
-             {:my-log/Test-archiving_0
-              {:rdf/type #{:my-log/Test-archiving},
-               :glog/executionOrder #{0}},
-              :glog/LogGraph
-              #:glog{:archiveDirectory #{"/tmp/myAppLog"},
-                     :entryCount #{1},
-                     :hasEntry #{:my-log/Test-archiving_0}},
-              :my-log/Test-archiving
-              {:glog/level
-               #{:glog/INFO},
-               :rdfs/subClassOf #{:glog/Entry}}}))
-      (when (.exists (io/file "/tmp/myAppLog"))
-        (doseq [f (rest (file-seq (io/file "/tmp/myAppLog")))]
-          (io/delete-file f))
-        (io/delete-file (io/file "/tmp/myAppLog"))))
-    (glog/log-reset!))
+  #?(:clj
+     (testing "Archiving"
+       (glog/log-reset! (add glog/ontology
+                             [[:glog/ArchiveFn 
+                               :igraph/compiledAs glog/save-to-archive
+                               ]
+                              [:glog/LogGraph 
+                               :glog/archiveDirectory "/tmp/myAppLog"
+                               ]]))
+       (glog/info! :my-log/Test-archiving)
+       (glog/log-reset!)
+       (is (= (-> 
+               (clojure.java.io/as-file 
+                (igraph/unique
+                 (@glog/log-graph :glog/LogGraph :glog/continuingFrom)))
+               (.exists))
+              true))
+       (let [restored
+             (let [g (make-graph)] 
+               (igraph/read-from-file 
+                g 
+                (igraph/unique 
+                 (@glog/log-graph :glog/LogGraph :glog/continuingFrom))))
+             restored (igraph/subtract restored
+                                       [:my-log/Test-archiving_0 :glog/timestamp])
+             ]
+         (is (= (igraph/normal-form restored)
+                {:my-log/Test-archiving_0
+                 {:rdf/type #{:my-log/Test-archiving},
+                  :glog/executionOrder #{0}},
+                 :glog/LogGraph
+                 #:glog{:archiveDirectory #{"/tmp/myAppLog"},
+                        :entryCount #{1},
+                        :hasEntry #{:my-log/Test-archiving_0}},
+                 :my-log/Test-archiving
+                 {:glog/level
+                  #{:glog/INFO},
+                  :rdfs/subClassOf #{:glog/Entry}}}))
+         (when (.exists (io/file "/tmp/myAppLog"))
+           (doseq [f (rest (file-seq (io/file "/tmp/myAppLog")))]
+             (io/delete-file f))
+           (io/delete-file (io/file "/tmp/myAppLog"))))
+       (glog/log-reset!)))
   
   (testing "Searching forward and backward"
     (glog/log-reset!)
