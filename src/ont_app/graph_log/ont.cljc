@@ -85,7 +85,7 @@ the contents of the graph.
        :rdfs/comment "Asserts the number of log entries in this graph."
        ]
       [:glog/Entry
-       :rdfs/comment "Refers to an entry in a log"
+       :rdfs/comment "The grandparent class of all log entries"
        ]
       [:glog/level
        :rdfs/domain :glog/Entry
@@ -148,13 +148,13 @@ Asserts the order of execution for some Entry within a log."
        :rdfs/domain :glog/Entry
        :rdfs/range :xsd/nonNegativeInteger
        :rdfs/comment "
-Current time in milliseconds at time Entry was created."
+Current time in milliseconds at time the Entry was created."
        :owl/seeAlso :rlog/date ;; which uses Date string.
        ]
       [:glog/InformsUri
        :rdfs/subClassOf :rdf/Property
        :rdfs/comment "
-Refers to a kwi whose name should inform the minting of each new 
+Refers to a KWI whose name should inform the minting of each new 
 Entry's URI, in addition to its class and execution order, the better to 
 understand at a glance what the log entry is about."
        ]
