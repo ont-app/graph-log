@@ -82,7 +82,7 @@ Vocabulary:
 
                       
         ]
-    #dbg
+    
     (stache/render
      "{{directory}}/{{start}}-{{stop}}.edn"
      {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
@@ -140,7 +140,7 @@ Vocabulary:
        (reset! archive-file (archive-fn (difference @log-graph
                                                       initial-graph))))
      ;; Save the previous log to the path provided by SaveToFn
-     (timbre/warn "archive file:" @archive-file)
+     (timbre/debug "archive file:" @archive-file)
      (reset! log-graph (if @archive-file
                          (add initial-graph
                               [:glog/LogGraph
