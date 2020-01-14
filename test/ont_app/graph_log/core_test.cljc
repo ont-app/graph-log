@@ -35,6 +35,7 @@
     (println "Hello " whos-asking ", here's the answer...")
   (glog/log-value! :my-log/returning-get-the-answer 42))
 
+
 (deftest readme-examples
   (testing "Simple usage"
     (log-reset!)
@@ -137,6 +138,7 @@
            []))
     (glog/log-reset!)
     )
+  
   #?(:clj
      (testing "Archiving"
        (glog/log-reset! (add glog/ontology
@@ -238,8 +240,29 @@
               (is (= (igraph/normal-form gb)
                      (igraph/normal-form B-not-A)))
             )))))))
-
     
+(defn test-log-value-at-level []
+  (glog/value-info! ::test-value-info 42)
+  (glog/value-info! ::test-value-info [::asdf "asdf"] 43))
 
-      
+(deftest log-value-at-level
+  (testing "log-value-at-level"
+    (glog/log-reset!)
+    (test-log-value-at-level)
+    (let [g (glog/remove-variant-values)
+          ]
+      (is (= (glog/ith-entry g 0)
+             [::test-value-info_0
+              {:rdf/type #{::test-value-info},
+               :glog/executionOrder #{0},
+               :glog/value #{42}}]))
+      (is (= (glog/ith-entry g 1)
+             [::test-value-info_1
+              {:rdf/type #{::test-value-info},
+               :glog/executionOrder #{1},
+               ::asdf #{"asdf"}
+               :glog/value #{43}}])))))
+          
+
+  
 

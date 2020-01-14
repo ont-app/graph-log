@@ -47,6 +47,7 @@
 (def default-log-level :glog/INFO)
 
 
+
 ;; FUN WITH READER MACROS
 
 #?(:cljs
@@ -282,7 +283,8 @@ Where
                                             (traverse-link :glog/priority)])
 
             log-priority (or (the (@log-graph :glog/LogGraph level-priority))
-                             (the (@log-graph default-log-level :glog/priority)))
+                             (the (@log-graph default-log-level :glog/priority))
+                             (the (ontology default-log-level :glog/priority)))
             ;; ... the level this log is set to
             args (reduce handle-type-specific-args
                          []
@@ -291,7 +293,8 @@ Where
             entry-priority (or (the (@log-graph entry-type level-priority))
                                (the (@log-graph
                                      default-log-level
-                                     :glog/priority)))
+                                     :glog/priority))
+                               (the (ontology default-log-level :glog/priority)))
             ]
         (when (and (>= entry-priority log-priority)
                    (not (@log-graph entry-type :glog/level :glog/OFF)))
@@ -337,8 +340,13 @@ Where
 
 (defn log-value-at-level! [level]
   "Returns a logging function with logging level `level`"
-  (fn [entry-type & args]
-    (apply log-value! (reduce conj [entry-type :glog/level level] args))))
+  (fn _log-value-at-level!
+    ([entry-type value]
+     (log-value! entry-type [:glog/level level] value))
+    ([entry-type other-args value]
+     (log-value! entry-type
+                 (reduce conj other-args [:glog/level level])
+                 value))))
 
 (def value-debug! (log-value-at-level! :glog/DEBUG))
 (def value-info!  (log-value-at-level! :glog/INFO))
