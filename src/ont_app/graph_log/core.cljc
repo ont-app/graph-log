@@ -16,7 +16,7 @@
             reduce-spo
             subjects
             subtract
-            traversal-comp
+            t-comp
             traverse
             traverse-link
             ]]
@@ -189,7 +189,7 @@ Where
 <entry-id> is a KWI s.t. (@log-graph entry-id :glog/message <message>)
 "
   (let [desc (igraph/flatten-description (@log-graph entry-id))
-        level-p (igraph/traversal-comp [(traverse-link :rdf/type)
+        level-p (igraph/t-comp [(traverse-link :rdf/type)
                                         (traverse-link :glog/level)])
         level (or (the (@log-graph entry-id level-p))
                   :debug)
@@ -278,7 +278,7 @@ Where
                     (add [:glog/LogGraph :glog/hasEntry @id-atom]))))
             
             ]
-      (let [level-priority (traversal-comp [(traverse-link :glog/level)
+      (let [level-priority (t-comp [(traverse-link :glog/level)
                                             (traverse-link :glog/priority)])
 
             log-priority (or (the (@log-graph :glog/LogGraph level-priority))
