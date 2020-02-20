@@ -214,7 +214,7 @@ Where
 
   (when (not (@log-graph :glog/Log :glog/level :glog/OFF))
     (letfn [(handle-type-specific-args [acc [k v]]
-              ;; returns args without type-specific args
+              ;; returns args w/ type-specific args removed
               ;; side-effect: assigns log level to entry type
               (if (#{:glog/level} k)
                 (let []
@@ -434,7 +434,7 @@ Where
   <c> is the (ignored) traversal context
   <found> is nil or the first previous entry to pass <test>
   <previous-index> decrements the head of <q>, or empty if found or <i> < 0
-  <test> := fn [entry] -> boolean
+  <test> := fn [g entry] -> boolean
   <q> := [<entry> or <i> [i] if still searching or [] if found. decrementing per iteration
   <i> is the execution order to test
   <inc-or-dec> :~ #{inc dec}, inc to search forward dec to search backward.
@@ -473,7 +473,15 @@ NOTE: typically this is used as a partial application over <test>
      ]))
 
 (defn search-backward 
-  "Searches the log backward for a match to `test`"
+  "Searches the log backward for a match to `test`, starting at `start`
+  Where
+  <test> := fn [g entry] -> boolean
+  <start> is an integer indexing the (entries g) (default end of entries)
+  <g> is the log-graph
+  "
+  ([test]
+   (search-backward @log-graph test (dec (count (entries)))))
+  
   ([test start]
    (search-backward @log-graph test start))
   
@@ -481,7 +489,15 @@ NOTE: typically this is used as a partial application over <test>
    (traverse g (partial search dec test) nil [start])))
 
 (defn search-forward 
-  "Searches the log forward for a match to `test`"
+  "Searches the log forward for a match to `test` starting at `start`
+  Where
+  <test> := fn [g entry] -> boolean
+  <start> is an integer indexing (entries g) (default 0)
+  <g> is the log-graph
+  "
+  ([test]
+   (search-forward @log-graph test 0))
+
   ([test start]
    (search-forward @log-graph test start))
 
