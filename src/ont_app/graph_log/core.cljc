@@ -62,6 +62,7 @@
    :post [#(boolean? %)]
    }
   (when (not @level-priorities)
+    ;; populate the level-priorities cache
     (letfn [(collect-priority [macc bmap]
               (assoc macc
                      (:?level bmap)
@@ -234,128 +235,86 @@ Where
   :rdf/type :glog/InformsUri in @log-graph.
 <entry-type> is a KWI
 <args> := [<arg-kwi> <value>, ...]
+Note: Any issues relating to log levels should be handled before calling this
+  function.
 "
   
   (when-not (@log-graph :glog/LogGraph) ;; the graph is not initialized
     (timbre/warn "graph-log/log-graph is not initialized. Using default")
     (log-reset!))
-
-  (when (not (@log-graph :glog/Log :glog/level :glog/OFF))
-    (letfn [(handle-type-specific-args [acc [k v]]
-              ;; returns args w/ type-specific args removed
-              ;; side-effect: assigns log level to entry type
-              (if (#{:glog/level} k)
-                (let []
-                  (when-not (the (@log-graph entry-type :glog/level))
-                    ;; ... if not already specified...
-                    (swap! log-graph add [entry-type :glog/level v]))
-                  acc)
-                ;;else it's an entry-specific attribute
-                (reduce conj acc [k v])))
-                  
-            (collect-if-informs-uri
-              [acc [k v]]
-              ;; maybe mint a more expressive kwi
-              (if (@log-graph k :rdf/type :glog/InformsUri)
-                (conj acc (if (keyword? v)
-                            (name v)
-                            v))
-                acc))
-            
-            (add-entry [id-atom g args]
-              ;; side-effect: sets `id-atom` to a newly minted kwi
-              ;; returns `g`' with new entry for @id-atom, per args,
-              ;; incrementing the entry-count of the graph
-              ;; This is called in a swap!
-              (let  [execution-order (entry-count)
-                     maybe-add-type (fn [g]
-                                      (if (g entry-type :rdfs/subClassOf)
-                                        g
-                                        (add g
-                                             [entry-type
-                                              :rdfs/subClassOf :glog/Entry])))
-                     maybe-add-level (fn [g]
-                                      (if (g entry-type :glog/level)
-                                        g
-                                        (add g [entry-type
-                                                :glog/level
-                                                (or (the (g
-                                                          :glog/LogGraph
-                                                          :glog/level))
-                                                    default-log-level)
-                                                ])))
-                     ]
-                                        
-                (reset! id-atom
-                        (apply mint-kwi (reduce collect-if-informs-uri
-                                                [entry-type
-                                                 execution-order
-                                                 ]
-                                                (partition 2 args))))
-                (-> g
-                    (maybe-add-type)
-                    (maybe-add-level)
-                    (assert-unique :glog/LogGraph
-                                   :glog/entryCount
-                                   (inc (entry-count)))
-                    (add (reduce conj
-                                 [@id-atom :rdf/type entry-type
-                                   :glog/timestamp (timestamp) 
-                                   :glog/executionOrder execution-order
-                                   ]
-                                 args))
-                    (add [:glog/LogGraph :glog/hasEntry @id-atom]))))
-            
-            ]
-      (let [level-priority (t-comp [:glog/level :glog/priority])
-
-
-            log-priority (or (the (@log-graph :glog/LogGraph level-priority))
-                             (the (@log-graph default-log-level :glog/priority))
-                             (the (ontology default-log-level :glog/priority)))
-            ;; ... the level this log is set to
-            args (reduce handle-type-specific-args
-                         []
-                         (partition 2 args))
-
-            entry-priority (or (the (@log-graph entry-type level-priority))
-                               (the (@log-graph
-                                     default-log-level
-                                     :glog/priority))
-                               (the (ontology default-log-level :glog/priority)))
-            ]
-        (when (and (>= entry-priority log-priority)
-                   (not (@log-graph entry-type :glog/level :glog/OFF)))
-          (let [id-atom (atom nil)]
-            (swap! log-graph (partial add-entry id-atom) args)
-            (if-let [messages (@log-graph @id-atom :glog/message)]
-              (doseq [message messages]
-                (log-message message @id-atom))
-              ;; else
-              (timbre/debug "Graph-logging " @id-atom))
-            
-            ;; TODO: support rdf/type :glog/Verbose
-            @id-atom
-            ))))))
-
-
+  (letfn [
+          (collect-if-informs-uri
+            [acc [k v]]
+            ;; maybe mint a more expressive kwi
+            (if (@log-graph k :rdf/type :glog/InformsUri)
+              (conj acc (if (keyword? v)
+                          (name v)
+                          v))
+              acc))
+          
+          (add-entry [id-atom g args]
+            ;; side-effect: sets `id-atom` to a newly minted kwi
+            ;; returns `g`' with new entry for @id-atom, per args,
+            ;; incrementing the entry-count of the graph
+            ;; This is called in a swap!
+            (let  [arg-count (count args)
+                   execution-order (entry-count)
+                   maybe-add-type (fn [g]
+                                    (if (g entry-type :rdfs/subClassOf)
+                                      g
+                                      (add g
+                                           [entry-type
+                                            :rdfs/subClassOf :glog/Entry])))
+                   ]
+              (when (not (and (> arg-count 0)
+                              (even? arg-count)))
+                (throw (ex-info "Invalid arguments to log entry. Should be an even number > 0."
+                                {:type ::InvalidArgumentsToLogEntry
+                                 ::args args
+                                 ::arg-count arg-count
+                                 })))
+              (reset! id-atom
+                      (apply mint-kwi (reduce collect-if-informs-uri
+                                              [entry-type
+                                               execution-order
+                                               ]
+                                              (partition 2 args))))
+              (-> g
+                  (maybe-add-type)
+                  (assert-unique :glog/LogGraph
+                                 :glog/entryCount
+                                 (inc (entry-count)))
+                  (add (reduce conj
+                               [@id-atom :rdf/type entry-type
+                                :glog/timestamp (timestamp) 
+                                :glog/executionOrder execution-order
+                                ]
+                               args))
+                  (add [:glog/LogGraph :glog/hasEntry @id-atom]))))
+          
+          ]
+    (let [id-atom (atom nil)]
+      (swap! log-graph (partial add-entry id-atom) args)
+      (if-let [messages (@log-graph @id-atom :glog/message)]
+        (doseq [message messages]
+          (log-message message @id-atom))
+        ;; else
+        (timbre/debug "Graph-logging " @id-atom)) ;; TODO: support rdf/type :glog/Verbose
+      
+      @id-atom
+      )))
 
 (defmacro apply-log-fn-at-level [default log-fn level entry-type & args]
-  `(let [level# (or (the (@log-graph ~entry-type :glog/level))
-                    ~level)
+  `(let [entry-level# (or (the (@log-graph ~entry-type :glog/level))
+                          ~level)
+         global-level# (or (the (@log-graph :glog/LogGraph :glog/level))
+                             default-log-level)
          ]
-     (print "level:" level#)
-     (if (level>= level# (or (the (@log-graph :glog/LogGraph :glog/level))
-                             default-log-level))
+     (if (and (not= entry-level# :glog/OFF)
+              (not= global-level# :glog/OFF)
+              (level>= entry-level# global-level#))
        (apply ~log-fn (reduce conj [~entry-type] '~args))
        ~default)))
-
-
-#_(defn old-log-at-level! [level]
-  "Returns a logging function with logging level `level`"
-  (fn [entry-type & args]
-    (apply log! (reduce conj [entry-type :glog/level level] args))))
-
 
 (defmacro trace! [entry-type & args]
   `(apply-log-fn-at-level nil log! :glog/TRACE ~entry-type ~@args))
@@ -384,6 +343,8 @@ Where
    (log-value! entry-type [] value)
    )
   ([entry-type other-args value]
+   {:pre [(vector? other-args)]
+    }
    (apply log! (reduce conj
                       [entry-type]
                       (reduce conj
@@ -416,24 +377,6 @@ Where
   `(apply-log-fn-at-level
     ~(last args) log-value! :glog/FATAL ~entry-type ~@args))
 
-
-
-#_(defn log-value-at-level! [level]
-  "Returns a logging function with logging level `level`"
-  (fn _log-value-at-level!
-    ([entry-type value]
-     (log-value! entry-type [:glog/level level] value))
-    ([entry-type other-args value]
-     (log-value! entry-type
-                 (reduce conj other-args [:glog/level level])
-                 value))))
-
-
-;; (def value-debug! (log-value-at-level! :glog/DEBUG))
-;; (def value-info!  (log-value-at-level! :glog/INFO))
-;; (def value-warn!  (log-value-at-level! :glog/WARN))
-;; (def value-error! (log-value-at-level! :glog/ERROR))
-;; (def value-fatal! (log-value-at-level! :glog/FATAL))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR VIEWING LOG CONTENTS
