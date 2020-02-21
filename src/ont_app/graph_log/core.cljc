@@ -46,6 +46,34 @@
 
 (def default-log-level :glog/INFO)
 
+(def level-priorities
+  "Caches level priorities"
+  (atom nil))
+
+(defn level>=
+  "Returns true iff `this-level` has priority >= `that-level`
+  Where
+  <this-level> e.g. :glog/INFO
+  <that-level> e.g. :glog/DEBUG
+  "
+  [this-level that-level]
+  {:pre [(keyword? this-level)
+         (keyword? that-level)]
+   :post [#(boolean? %)]
+   }
+  (when (not @level-priorities)
+    (letfn [(collect-priority [macc bmap]
+              (assoc macc
+                     (:?level bmap)
+                     (:?priority bmap)))
+            ]
+      (reset! level-priorities
+              (reduce collect-priority
+                      {}
+                      (query ontology
+                             [[:?level :glog/priority :?priority]])))))
+  (>= (this-level @level-priorities)
+      (that-level @level-priorities)))
 
 
 ;; FUN WITH READER MACROS
@@ -191,7 +219,7 @@ Where
 "
   (let [desc (igraph/flatten-description (@log-graph entry-id))
         level-p (igraph/t-comp [(traverse-link :rdf/type)
-                                        (traverse-link :glog/level)])
+                                (traverse-link :glog/level)])
         level (or (the (@log-graph entry-id level-p))
                   :debug)
         ]
@@ -208,7 +236,7 @@ Where
 <args> := [<arg-kwi> <value>, ...]
 "
   
-  (when-not (subjects @log-graph) ;; the graph is not initialized
+  (when-not (@log-graph :glog/LogGraph) ;; the graph is not initialized
     (timbre/warn "graph-log/log-graph is not initialized. Using default")
     (log-reset!))
 
@@ -279,8 +307,8 @@ Where
                     (add [:glog/LogGraph :glog/hasEntry @id-atom]))))
             
             ]
-      (let [level-priority (t-comp [(traverse-link :glog/level)
-                                            (traverse-link :glog/priority)])
+      (let [level-priority (t-comp [:glog/level :glog/priority])
+
 
             log-priority (or (the (@log-graph :glog/LogGraph level-priority))
                              (the (@log-graph default-log-level :glog/priority))
@@ -310,17 +338,42 @@ Where
             @id-atom
             ))))))
 
-(defn log-at-level! [level]
+
+
+(defmacro apply-log-fn-at-level [default log-fn level entry-type & args]
+  `(let [level# (or (the (@log-graph ~entry-type :glog/level))
+                    ~level)
+         ]
+     (print "level:" level#)
+     (if (level>= level# (or (the (@log-graph :glog/LogGraph :glog/level))
+                             default-log-level))
+       (apply ~log-fn (reduce conj [~entry-type] '~args))
+       ~default)))
+
+
+#_(defn old-log-at-level! [level]
   "Returns a logging function with logging level `level`"
   (fn [entry-type & args]
     (apply log! (reduce conj [entry-type :glog/level level] args))))
 
-(def debug! (log-at-level! :glog/DEBUG))
-(def info!  (log-at-level! :glog/INFO))
-(def warn!  (log-at-level! :glog/WARN))
-(def error! (log-at-level! :glog/ERROR))
-(def fatal! (log-at-level! :glog/FATAL))
 
+(defmacro trace! [entry-type & args]
+  `(apply-log-fn-at-level nil log! :glog/TRACE ~entry-type ~@args))
+
+(defmacro debug! [entry-type & args]
+  `(apply-log-fn-at-level nil log! :glog/DEBUG ~entry-type ~@args))
+
+(defmacro info! [entry-type & args]
+  `(apply-log-fn-at-level nil log! :glog/INFO ~entry-type ~@args))
+
+(defmacro warn! [entry-type & args]
+  `(apply-log-fn-at-level nil log! :glog/WARN ~entry-type ~@args))
+
+(defmacro error! [entry-type & args]
+  `(apply-log-fn-at-level nil log! :glog/ERROR ~entry-type ~@args))
+
+(defmacro fatal! [entry-type & args]
+  `(apply-log-fn-at-level nil log! :glog/FATAL ~entry-type ~@args))
 
 (defn log-value!
   "Returns `value`
@@ -338,7 +391,34 @@ Where
                               [:glog/value value])))
    value))
 
-(defn log-value-at-level! [level]
+
+(defmacro value-trace! [entry-type & args]
+  `(apply-log-fn-at-level
+    ~(last args) log-value! :glog/TRACE ~entry-type ~@args))
+
+(defmacro value-debug! [entry-type & args]
+  `(apply-log-fn-at-level
+    ~(last args) log-value! :glog/DEBUG ~entry-type ~@args))
+
+(defmacro value-info! [entry-type & args]
+  `(apply-log-fn-at-level
+    ~(last args) log-value! :glog/INFO ~entry-type ~@args))
+
+(defmacro value-warn! [entry-type & args]
+  `(apply-log-fn-at-level
+    ~(last args) log-value! :glog/WARN ~entry-type ~@args))
+
+(defmacro value-error! [entry-type & args]
+  `(apply-log-fn-at-level
+    ~(last args) log-value! :glog/ERROR ~entry-type ~@args))
+
+(defmacro value-fatal! [entry-type & args]
+  `(apply-log-fn-at-level
+    ~(last args) log-value! :glog/FATAL ~entry-type ~@args))
+
+
+
+#_(defn log-value-at-level! [level]
   "Returns a logging function with logging level `level`"
   (fn _log-value-at-level!
     ([entry-type value]
@@ -348,11 +428,12 @@ Where
                  (reduce conj other-args [:glog/level level])
                  value))))
 
-(def value-debug! (log-value-at-level! :glog/DEBUG))
-(def value-info!  (log-value-at-level! :glog/INFO))
-(def value-warn!  (log-value-at-level! :glog/WARN))
-(def value-error! (log-value-at-level! :glog/ERROR))
-(def value-fatal! (log-value-at-level! :glog/FATAL))
+
+;; (def value-debug! (log-value-at-level! :glog/DEBUG))
+;; (def value-info!  (log-value-at-level! :glog/INFO))
+;; (def value-warn!  (log-value-at-level! :glog/WARN))
+;; (def value-error! (log-value-at-level! :glog/ERROR))
+;; (def value-fatal! (log-value-at-level! :glog/FATAL))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR VIEWING LOG CONTENTS
