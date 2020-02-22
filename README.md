@@ -1,13 +1,13 @@
 # graph-log
 
-Code and a small ontology for logging to an IGraph. It is part of the
-ont-app project.
+Code and a small ontology for logging to an
+[IGraph](https://github.com/ont-app/igraph) in clojure(script). It is
+part of the ont-app project.
 
 This this intended as a tool to be able to construct a graph of
 queryable, inter-related logging events which can serve as a basis for
 useful diagnostics.
 
-It is encoded entirely in cljc files, and targets both hosts.
 
 ## Contents
 - [Dependencies](#Dependencies)
@@ -46,7 +46,7 @@ It is encoded entirely in cljc files, and targets both hosts.
 > (defn get-the-answer [whos-asking]
     (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
     (println "Hello " whos-asking ", here's the answer...")
-                                                          (glog/log-value! :my-log/returning-get-the-answer 42))
+    (glog/log-value! :my-log/returning-get-the-answer 42))
 
 > (glog/log-reset!)
 > (get-the-answer "Douglas")
@@ -189,14 +189,14 @@ The default initial graph is `ont-app.graph-log.core/ontology`
 >
 ```
 
-The `ont-app.igraph.graph/Graph` data structure is immutable. The graph
-`ont-app.graph-log.core/log-graph` is an atom containing whichever
-IGraph implementaton you initialize it with. It has not been tested
-with mutable graphs.
+The `ont-app.igraph.graph/Graph` data structure is immutable. The
+graph `ont-app.graph-log.core/log-graph` is an atom containing an
+instance of `ont-app.igraph.graph/Graph, an lightweight, immutable
+implementation of the IGraph protocol provided with ont-app/igraph.
 
-All the graph-log constructs are kept in the `glog` namespace, but
-much of it is aligned to namesakes in [an existing public vocabulary
-called
+All the graph-log constructs except a set of macros dealing with log
+levels are kept in the `glog` namespace.  However, much of it is
+aligned to namesakes in [an existing public vocabulary called
 rlog](https://persistence.uni-leipzig.org/nlp2rdf/ontologies/rlog/rlog.html
 "rlog") (See
 [here](https://github.com/NLP2RDF/ontologies/blob/master/rlog/rlog.ttl)
@@ -388,7 +388,7 @@ There are of course corresponding macros for all the other log levels.
 <a name="Setting_warning_levels_of_entry_types"></a>
 ##### Setting warning levels of entry types
 
-The level-based logging macros described above (e.g. (debug! ...) are
+The level-based logging macros described above (e.g. (debug ...) are
 conditioned on their associated levels, but we can override the
 effective logging level of a given entry-type with `glog/set-level!`.
 
@@ -399,13 +399,10 @@ effective logging level of a given entry-type with `glog/set-level!`.
 >
 > (glog/set-level! :my-log/demoing-log-level :glog/WARN)
 > (glog/show :my-log/demoing-log-level)
-{:rdfs/subClassOf #{:glog/Entry}, :glog/level #{:glog/WARN}}
->
-> (glog/show :my-log/demoing-log-level)
 {:glog/level #{:glog/WARN}, 
  :rdfs/subClassOf #{:glog/Entry}}
->
-> (debug :my-log/demoing-log-level)
+> ;; this will be logged in spite of 'debug' < 'info':
+> (debug :my-log/demoing-log-level) 
 > (glog/entries)
 [:my-log/demoing-log-level_0] 
 >
@@ -439,7 +436,6 @@ You can turn logging off by setting its level to `glog/OFF`
 |:glog/archivePathFn |Asserts a function [g] -&gt; archive-path to which the current state of the log may be written before resetting. |
 |:glog/archiveDirectory |Asserts the directory portion of the archive-path used by archivePathFn. (only applicable if the local file system is used) |
 |:glog/continuingFrom |Asserts the archive-path of the log previously archived on the last reset. |
-|
 
 The contents of `glog/log-graph` are by default held in memory until
 the log is reset. 
