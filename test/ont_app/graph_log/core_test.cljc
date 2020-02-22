@@ -15,17 +15,21 @@
             ]]
     
    [ont-app.graph-log.core :as glog
-    :refer [debug!
-            error!
-            fatal!
-            info!
+    :refer [
             log!
             log-graph
             log-reset!
             log-value!
-            warn!
-            ]
-    ]))
+            ]]
+    #?(:clj [ont-app.graph-log.macros :refer :all]
+       :cljs [ont-app.graph-log.macros
+              :refer-macros [
+                             debug!
+                             fatal!
+                             info!
+                             value-info!
+                             ]])
+    ))
 
 
 ;; EXAMPLES FROM README
@@ -62,6 +66,7 @@
                [:?starting :my-log/whos-asking :?asker]
                ])
              #{{:?starting :my-log/starting-get-the-answer_0, :?asker "Douglas"}}))))
+
   (testing "Configuring the log-graph"
     (log-reset!)
     (is (= (@glog/log-graph :glog/INFO)
@@ -72,7 +77,7 @@
            #:rdfs{:subClassOf #{:rdf/Property}, :domain #{:glog/Entry},
                   :range #{:rdf/Literal},
                   :comment #{"\nA string or mustache template to print to the standard logging stream\nvia taesano.timbre. The flattened description of the entry will be\napplied to its value to resolve template {{parameters}}.\n"}})))
-  
+
   (testing "Administration"
     (log-reset!)
     (let [result (get-the-answer "Douglas")]    
@@ -104,11 +109,10 @@
       )
   (testing "Warning levels"
     (glog/log-reset!)
-    (is (= (glog/log! :my-log/demoing-log-level :glog/level :glog/WARN)
+    (is (= (glog/log! :my-log/demoing-log-level)
            ))
     (is (= (glog/show :my-log/demoing-log-level)
-           {:glog/level #{:glog/WARN}, 
-            :rdfs/subClassOf #{:glog/Entry}}))
+           {:rdfs/subClassOf #{:glog/Entry}}))
     
     (glog/set-level! :my-log/demoing-log-level :glog/DEBUG)
     (is (= (glog/show :my-log/demoing-log-level))
@@ -118,12 +122,12 @@
     (is (= (@glog/log-graph :glog/LogGraph :glog/level)
            #{:glog/DEBUG}))
 
-    (is (= (glog/debug! ::demo-log-level)
+    (is (= (debug! ::demo-log-level)
            :ont-app.graph-log.core-test/demo-log-level_0))
 
     (glog/set-level! :glog/LogGraph :glog/WARN)
 
-    (is (= (glog/debug! ::demo-log-level)
+    (is (= (debug! ::demo-log-level)
            nil))
 
     (is (= (glog/entries)
@@ -132,7 +136,7 @@
     (glog/log-reset! (add glog/ontology 
                           [:glog/LogGraph :glog/level :glog/OFF]))
 
-    (glog/fatal! :my-log/we-are-f-cked!)
+    (fatal! :my-log/we-are-f-cked!)
     
     (is (= (glog/entries)
            []))
@@ -148,7 +152,7 @@
                               [:glog/LogGraph 
                                :glog/archiveDirectory "/tmp/myAppLog"
                                ]]))
-       (glog/info! :my-log/Test-archiving)
+       (info! :my-log/Test-archiving)
        (glog/log-reset!)
        (is (= (-> 
                (clojure.java.io/as-file 
@@ -174,9 +178,7 @@
                         :entryCount #{1},
                         :hasEntry #{:my-log/Test-archiving_0}},
                  :my-log/Test-archiving
-                 {:glog/level
-                  #{:glog/INFO},
-                  :rdfs/subClassOf #{:glog/Entry}}}))
+                 {:rdfs/subClassOf #{:glog/Entry}}}))
          (when (.exists (io/file "/tmp/myAppLog"))
            (doseq [f (rest (file-seq (io/file "/tmp/myAppLog")))]
              (io/delete-file f))
@@ -213,14 +215,29 @@
         (glog/log-reset!)
         (get_the_answer "Douglas" 43)
         (reset! B (glog/remove-variant-values @glog/log-graph))
-        (def a @A)
-        (def b @B)
         (let [A-and-B (igraph/difference
                        (igraph/intersection @A @B)
                        glog/ontology)
               ]
           (is (= (igraph/normal-form A-and-B)
-                 {:my-log/returning-get-the-answer {:glog/level #{:glog/INFO}, :rdfs/subClassOf #{:glog/Entry}}, :my-log/starting-get-the-answer {:glog/level #{:glog/INFO}, :rdfs/subClassOf #{:glog/Entry}}, :glog/LogGraph #:glog{:hasEntry #{:my-log/returning-get-the-answer_1 :my-log/starting-get-the-answer_0}, :entryCount #{2}}, :igraph/Vocabulary #:igraph{:compiledAs #{:compiled}}, :my-log/returning-get-the-answer_1 {:rdf/type #{:my-log/returning-get-the-answer}, :glog/value #{}, :glog/executionOrder #{1}}, :my-log/starting-get-the-answer_0 {:rdf/type #{:my-log/starting-get-the-answer}, :my-log/whos-asking #{"Douglas"}, :glog/executionOrder #{0}}}))
+                 {:my-log/returning-get-the-answer
+                  {:rdfs/subClassOf #{:glog/Entry}},
+                  :my-log/starting-get-the-answer
+                  {:rdfs/subClassOf #{:glog/Entry}},
+                  :glog/LogGraph
+                  #:glog{:hasEntry
+                         #{:my-log/returning-get-the-answer_1
+                           :my-log/starting-get-the-answer_0},
+                         :entryCount #{2}},
+                  :igraph/Vocabulary
+                  #:igraph{:compiledAs #{:compiled}},
+                  :my-log/returning-get-the-answer_1
+                  {:rdf/type #{:my-log/returning-get-the-answer},
+                   :glog/executionOrder #{1}},
+                  :my-log/starting-get-the-answer_0
+                  {:rdf/type #{:my-log/starting-get-the-answer},
+                   :my-log/whos-asking #{"Douglas"},
+                   :glog/executionOrder #{0}}}))
           (let [A-not-B (igraph/difference @A (igraph/union
                                                glog/ontology A-and-B))
                 B-not-A (igraph/difference @B (igraph/union glog/ontology
@@ -242,8 +259,8 @@
             )))))))
     
 (defn test-log-value-at-level []
-  (glog/value-info! ::test-value-info 42)
-  (glog/value-info! ::test-value-info [::asdf "asdf"] 43))
+  (value-info! ::test-value-info 42)
+  (value-info! ::test-value-info [::asdf "asdf"] 43))
 
 (deftest log-value-at-level
   (testing "log-value-at-level"

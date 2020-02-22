@@ -16,7 +16,7 @@ It is encoded entirely in cljc files, and targets both hosts.
   - [Configuring the `log-graph`](#Configuring_the_log-graph)
   - [Adminstration](#Adminstration)
   - [Log entries](#Log_entries)
-  - [Warning levels](#Warning_levels)
+  - [Logging levels](#h4-logging-levels)
     - [Setting warning levels of entry types](#Setting_warning_levels_of_entry_types)
     - [Setting the global log level](#Setting_the_global_log_level)
   - [Archiving](#Archiving)
@@ -31,10 +31,11 @@ It is encoded entirely in cljc files, and targets both hosts.
 ```
 (ns ....
  (:require 
- [ont-app.igraph.core :as igraph]  ;; The IGraph protocol
- [ont-app.igraph.graph :as graph]  ;; Default implementation of IGraph
- [ont-app.graph-log.core :as glog] ;; the graph-log library
- [taoensso.timbre :as timbre]      ;; standard logging clj/cljs
+ [ont-app.igraph.core :as igraph]        ;; The IGraph protocol
+ [ont-app.igraph.graph :as graph]        ;; Default implementation of IGraph
+ [ont-app.graph-log.core :as glog]       ;; the graph-log library
+ [:ont-app.graph-log.macros :refer :all] ;; handles log levels
+ [taoensso.timbre :as timbre]            ;; standard logging clj/cljs
    ...
    ))
 ```
@@ -45,7 +46,7 @@ It is encoded entirely in cljc files, and targets both hosts.
 > (defn get-the-answer [whos-asking]
     (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
     (println "Hello " whos-asking ", here's the answer...")
-    (glog/log-value! :my-log/returning-get-the-answer 42))
+                                                          (glog/log-value! :my-log/returning-get-the-answer 42))
 
 > (glog/log-reset!)
 > (get-the-answer "Douglas")
@@ -312,8 +313,8 @@ You can also use the `annotate!` function to add arbitrary triples to
 ...
 ```
 
-<a name="Warning_levels"></a>
-#### Warning levels
+<a name="h4-logging-levels"></a>
+#### Logging levels
 
 Here's the vocabulary that relates to logging levels:
 
@@ -329,61 +330,6 @@ Here's the vocabulary that relates to logging levels:
 |:glog/WARN |A standard logging level |
 |:glog/FATAL |A standard logging level |
 |:glog/ALL |Signals that the log should record all log statements |
-
-<a name="Setting_warning_levels_of_entry_types"></a>
-##### Setting warning levels of entry types
-We can declare the level of each entry type in the log declaration. 
-
-```
-> (glog/log-reset!)
-> (glog/log! :my-log/demoing-log-level :glog/level :glog/WARN)
-:my-log/demoing-log-level_0 ;; note that the '0' marks this as an instance
->
-```
-
-Log level is assigned to the entry class itself, and not the individual entry:
-
-```
-> (glog/show :my-log/demoing-log-level)
-{:glog/level #{:glog/WARN}, 
- :rdfs/subClassOf #{:glog/Entry}}
->
-```
-
-We could also have used one of the dedicated logging expressions and
-achieved the same effect:
-
-```
-> (glog/warn! :my-log/demoing-log-level)
-:my-log/demoing-log-level_1
->
-```
-
-There are analogous statements for the other log levels:
-- `glog/debug!`
-- `glog/info!`
-- `glog/warn!`
-- `glog/error!`
-- `glog/fatal!`
-
-And for value entries as well:
-- `glog/value-debug!`
-- `glog/value-info!`
-- `glog/value-warn!`
-- `glog/value-error!`
-- `glog/value-fatal!`
-
-Log declarations only establish a log level for their associated entry
-types if there is not already a log-level set for that type.
-
-We can set the log level for the entry type directly thus:
-
-```
-> (glog/set-level! :my-log/demoing-log-level :glog/DEBUG)
-> (glog/show :my-log/demoing-log-level)
-{:rdfs/subClassOf #{:glog/Entry}, :glog/level #{:glog/DEBUG}}
->
-```
 
 <a name="Setting_the_global_log_level"></a>
 ##### Setting the global log level
@@ -412,30 +358,59 @@ or we can also reset the log level at any time thus:
 ...
 ```
 
-Having set the level, only entry types whose logging level matches or
-exceeds that of the log will be entered.
+For efficiency's sake, we want to avoid evaluating log statements when
+the log level in not appropriate, and so this stuff is handled by a
+set of macros defined in `ont-app.graph-log.macros`. 
+
+Here are two examples, the first of which calls `log!` and the second of which calls `log-value!`
 
 ```
-> (def debugging-log
-    (add glog/ontology 
-      [:glog/LogGraph :glog/level :glog/DEBUG]))
 > (glog/log-reset! debugging-log)
-> (glog/debug! ::demo-log-level)
+> (debug!
+    :my-log/starting-get-the-answer 
+    :my-log/whos-asking "Douglas")
+:my-log-starting-get-the-answer_1
 >
-:ont-app.graph-log.core-test/demo-log-level_0
-> ;; ... Returns the KWI for the new entry
+> (value-debug! :my-log/returning-get-the-answer 42)
+42
 > (glog/entries)
-[:ont-app.graph-log.core-test/demo-log-level_0]
+[:my-log/starting-get-the-answer_0 
+ :my-log/returning-get-the-answer_1]
 >
-> (glog/set-level! :glog/LogGraph :glog/WARN)
-> (glog/debug! ::demo-log-level)
-> ;; No new entry created, returns nil:
-nil
-> ;; So there's no change in the set of entries...
+``` 
+
+... These entries will only create log entries, and will only evaluate
+their arguments, if the current logging level is >= the global logging
+level, with the exception described in the next section.
+
+<a name="Setting_warning_levels_of_entry_types"></a>
+##### Setting warning levels of entry types
+
+The level-based logging macros described above (e.g. (debug! ...) are
+conditioned on their associated levels, but we can override the
+effective logging level of a given entry-type with `glog/set-level!`.
+
+
+```
+> (glog/log-reset!)
+> (glog/set-level! :glog/LogGraph :glog/INFO)
+>
+> (glog/set-level! :my-log/demoing-log-level :glog/WARN)
+> (glog/show :my-log/demoing-log-level)
+{:rdfs/subClassOf #{:glog/Entry}, :glog/level #{:glog/WARN}}
+>
+> (glog/show :my-log/demoing-log-level)
+{:glog/level #{:glog/WARN}, 
+ :rdfs/subClassOf #{:glog/Entry}}
+>
+> (debug! :my-log/demoing-log-level)
 > (glog/entries)
-[:ont-app.graph-log.core-test/demo-log-level_0]
+[:my-log/demoing-log-level_0] 
 >
 ```
+
+Having set the level, only entry types whose logging level matches or
+exceeds that of the log will be entered.
 
 You can turn logging off by setting its level to `glog/OFF`
 
