@@ -3,6 +3,9 @@
    [clojure.string :as str]
    [clojure.set :as set]
    #?(:clj [clojure.java.io :as io])
+   #?(:clj [clojure.pprint :as pp]
+      :cljs [cljs.pprint :as pp])
+
    ;; 3rd party libraries
    [taoensso.timbre :as timbre]
    ;;[selmer.parser :as selmer]
@@ -603,9 +606,9 @@ Where
   (let [[same [d1 d2]] (find-divergence g1 g2)
         ]
     (println "Shared:")
-    (clojure.pprint/pprint same)
+    (pp/pprint same)
     (println "In G1:")
-    (clojure.pprint/pprint (igraph/normal-form d1))
+    (pp/pprint (igraph/normal-form d1))
     (println "In G2:")
-    (clojure.pprint/pprint (igraph/normal-form d2))
+    (pp/pprint (igraph/normal-form d2))
     [d1 d2]))

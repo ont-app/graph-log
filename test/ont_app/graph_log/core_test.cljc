@@ -21,15 +21,19 @@
             log-reset!
             log-value!
             ]]
-    #?(:clj [ont-app.graph-log.macros :refer :all]
-       :cljs [ont-app.graph-log.macros
-              :refer-macros [
-                             debug!
-                             fatal!
-                             info!
-                             value-info!
-                             ]])
-    ))
+    #?(:clj [ont-app.graph-log.macros :refer :all])
+    )
+  #?(:cljs
+     (:require-macros
+       [ont-app.graph-log.macros
+              :refer [
+                      debug
+                      fatal
+                      info
+                      value-info
+                      ]]
+       ))
+  )
 
 
 ;; EXAMPLES FROM README
@@ -121,13 +125,12 @@
                           [:glog/LogGraph :glog/level :glog/DEBUG]))
     (is (= (@glog/log-graph :glog/LogGraph :glog/level)
            #{:glog/DEBUG}))
-
-    (is (= (debug! ::demo-log-level)
+    (is (= (debug ::demo-log-level)
            :ont-app.graph-log.core-test/demo-log-level_0))
 
     (glog/set-level! :glog/LogGraph :glog/WARN)
 
-    (is (= (debug! ::demo-log-level)
+    (is (= (debug ::demo-log-level)
            nil))
 
     (is (= (glog/entries)
@@ -136,7 +139,7 @@
     (glog/log-reset! (add glog/ontology 
                           [:glog/LogGraph :glog/level :glog/OFF]))
 
-    (fatal! :my-log/we-are-f-cked!)
+    (fatal :my-log/we-are-f-cked!)
     
     (is (= (glog/entries)
            []))
@@ -152,7 +155,7 @@
                               [:glog/LogGraph 
                                :glog/archiveDirectory "/tmp/myAppLog"
                                ]]))
-       (info! :my-log/Test-archiving)
+       (info :my-log/Test-archiving)
        (glog/log-reset!)
        (is (= (-> 
                (clojure.java.io/as-file 
@@ -259,8 +262,8 @@
             )))))))
     
 (defn test-log-value-at-level []
-  (value-info! ::test-value-info 42)
-  (value-info! ::test-value-info [::asdf "asdf"] 43))
+  (value-info ::test-value-info 42)
+  (value-info ::test-value-info [::asdf "asdf"] 43))
 
 (deftest log-value-at-level
   (testing "log-value-at-level"

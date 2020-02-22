@@ -366,12 +366,12 @@ Here are two examples, the first of which calls `log!` and the second of which c
 
 ```
 > (glog/log-reset! debugging-log)
-> (debug!
+> (debug
     :my-log/starting-get-the-answer 
     :my-log/whos-asking "Douglas")
 :my-log-starting-get-the-answer_1
 >
-> (value-debug! :my-log/returning-get-the-answer 42)
+> (value-debug :my-log/returning-get-the-answer 42)
 42
 > (glog/entries)
 [:my-log/starting-get-the-answer_0 
@@ -382,6 +382,8 @@ Here are two examples, the first of which calls `log!` and the second of which c
 ... These entries will only create log entries, and will only evaluate
 their arguments, if the current logging level is >= the global logging
 level, with the exception described in the next section.
+
+There are of course corresponding macros for all the other log levels.
 
 <a name="Setting_warning_levels_of_entry_types"></a>
 ##### Setting warning levels of entry types
@@ -403,7 +405,7 @@ effective logging level of a given entry-type with `glog/set-level!`.
 {:glog/level #{:glog/WARN}, 
  :rdfs/subClassOf #{:glog/Entry}}
 >
-> (debug! :my-log/demoing-log-level)
+> (debug :my-log/demoing-log-level)
 > (glog/entries)
 [:my-log/demoing-log-level_0] 
 >
@@ -421,7 +423,7 @@ You can turn logging off by setting its level to `glog/OFF`
 ...
 > (glog/reset-log! no-logging)
 ...
-> (glog/fatal! :my-log/we-are-so-screwed!)
+> (fatal :my-log/we-are-so-screwed!)
 ...
 > (glog/entries)
 []
@@ -487,7 +489,7 @@ With this configuration, the following call:
 after adding an entry:
 
 ```
-> (glog/info! :my-log/Test-archiving)
+> (info :my-log/Test-archiving)
 ...
 > (glog/log-reset!) 
 ```
@@ -715,7 +717,7 @@ In G2:
 <a name="License"></a>
 ## License
 
-Copyright © 2019 Eric D. Scott
+Copyright © 2020 Eric D. Scott
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
