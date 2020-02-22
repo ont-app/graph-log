@@ -1,4 +1,6 @@
-(ns ont-app.graph-log.macros
+(ns ont-app.graph-log.levels
+  {:doc "Macros to condition logging on the operative log level"
+   }
   (:require
    [ont-app.igraph.core :as igraph]
    [ont-app.graph-log.core :as glog]

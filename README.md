@@ -34,7 +34,7 @@ useful diagnostics.
  [ont-app.igraph.core :as igraph]        ;; The IGraph protocol
  [ont-app.igraph.graph :as graph]        ;; Default implementation of IGraph
  [ont-app.graph-log.core :as glog]       ;; the graph-log library
- [:ont-app.graph-log.macros :refer :all] ;; handles log levels
+ [:ont-app.graph-log.levels :refer :all] ;; handles log levels
  [taoensso.timbre :as timbre]            ;; standard logging clj/cljs
    ...
    ))
@@ -360,7 +360,7 @@ or we can also reset the log level at any time thus:
 
 For efficiency's sake, we want to avoid evaluating log statements when
 the log level in not appropriate, and so this stuff is handled by a
-set of macros defined in `ont-app.graph-log.macros`. 
+set of macros defined in `ont-app.graph-log.levels`. 
 
 Here are two examples, the first of which calls `log!` and the second of which calls `log-value!`
 

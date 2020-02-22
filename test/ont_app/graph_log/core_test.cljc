@@ -21,11 +21,11 @@
             log-reset!
             log-value!
             ]]
-    #?(:clj [ont-app.graph-log.macros :refer :all])
+    #?(:clj [ont-app.graph-log.levels :refer :all])
     )
   #?(:cljs
      (:require-macros
-       [ont-app.graph-log.macros
+       [ont-app.graph-log.levels
               :refer [
                       debug
                       fatal
