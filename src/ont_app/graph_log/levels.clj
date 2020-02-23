@@ -30,7 +30,7 @@
      (if (and (not= entry-level# :glog/OFF)
               (not= global-level# :glog/OFF)
               (glog/level>= entry-level# global-level#))
-       (apply ~log-fn (reduce conj [~entry-type] '~args))
+       (apply ~log-fn (reduce conj [~entry-type] (list ~@args)))
        ~default)))
 
 ;; log! per debug level
