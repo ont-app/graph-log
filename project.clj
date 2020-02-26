@@ -1,4 +1,4 @@
-(defproject ont-app/graph-log "0.1.0"
+(defproject ont-app/graph-log "0.1.1-SNAPSHOT"
   :description "An graph-based logging system for debugging"
   :url "https://github.com/ont-app/graph-log"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
@@ -11,9 +11,9 @@
                  [cljstache "2.0.5"]
                  [lein-doo "0.1.11"] ;; cljs testing
                  ;;
-                 [ont-app/igraph "0.1.4"]
-                 [ont-app/igraph-vocabulary "0.1.0"] 
-                 [ont-app/vocabulary "0.1.0"]
+                 [ont-app/igraph "0.1.5-SNAPSHOT"]
+                 [ont-app/igraph-vocabulary "0.1.1-SNAPSHOT"] 
+                 [ont-app/vocabulary "0.1.1-SNAPSHOT"]
                  ]
   :plugins [[lein-codox "0.10.6"]
             [lein-cljsbuild "1.1.7"
