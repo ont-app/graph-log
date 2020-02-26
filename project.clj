@@ -41,7 +41,8 @@
                       :optimizations :advanced ;;:none
                       }
            }
-   }} ;; end cljsbuild
+    }} ;; end cljsbuild
+  :codox {:output-path "doc"}
   :profiles {:uberjar {:aot :all}}
   :clean-targets
     ^{:protect false}
