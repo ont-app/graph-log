@@ -3,18 +3,17 @@
   :url "http://example.com/FIXME"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
-  :dependencies [[org.clojure/clojure "1.10.0"]
-                 [org.clojure/clojurescript "1.10.520"]
+  :dependencies [[org.clojure/clojure "1.10.1"]
+                 [org.clojure/clojurescript "1.10.597"]
                  [org.clojure/spec.alpha "0.2.176"]
                  ;; 3rd party libraries
                  [com.taoensso/timbre "4.10.0"] ;; basic logging
-                 [cljstache "2.0.4"]
+                 [cljstache "2.0.5"]
                  [lein-doo "0.1.11"] ;; cljs testing
-                 ;; [selmer "1.12.12"] ;; templating 
                  ;;
-                 [ont-app/igraph "0.1.4-SNAPSHOT"]
-                 [ont-app/igraph-vocabulary "0.1.0-SNAPSHOT"] 
-                 [ont-app/vocabulary "0.1.0-SNAPSHOT"]
+                 [ont-app/igraph "0.1.4"]
+                 [ont-app/igraph-vocabulary "0.1.0"] 
+                 [ont-app/vocabulary "0.1.0"]
                  ]
   :plugins [[lein-codox "0.10.6"]
             [lein-cljsbuild "1.1.7"
@@ -55,9 +54,7 @@
            }
    }} ;; end cljsbuild
   :profiles {:uberjar {:aot :all}
-             :dev {:dependencies [[binaryage/devtools "0.9.10"]
-                                  ]
-                   :source-paths ["src"] 
+             :dev {:source-paths ["src"] 
                    :clean-targets
                    ^{:protect false}
                    ["resources/public/js/compiled"
