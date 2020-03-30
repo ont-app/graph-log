@@ -69,7 +69,12 @@
     (letfn [(collect-priority [macc bmap]
               (assoc macc
                      (:?level bmap)
-                     (:?priority bmap)))
+                     (:?priority bmap)
+                     ;; strip out the namespaces and downcase to
+                     ;; match timbre levels:
+                     (keyword (str/lower-case (name (:?level bmap))))
+                     (:?priority bmap)
+                     ))
             ]
       (reset! level-priorities
               (reduce collect-priority
@@ -214,7 +219,7 @@ Where
   ([g] (or (the (g :glog/LogGraph :glog/entryCount))
            0)))
 
-(defn log-message [message entry-id]
+#_(defn log-message [message entry-id]
   "Side-effect: writes a message to the timbre log stream.
 Where
 <message> may be a selmer template, in which case the flattened
@@ -230,89 +235,149 @@ Where
     (timbre/log (keyword (str/lower-case (name level)))
                 (stache/render message desc))))
 
-(defn log! [entry-type & args]
-  "Side-effect: adds an entry to log-graph for <id> minted per `entry-type` and `args`
-Returns: <id> or nil (if no entry was made)
-Where
-<id> is a KWI minted for <entry-type> and whatever <arg-kwi>s are of 
-  :rdf/type :glog/InformsUri in @log-graph.
-<entry-type> is a KWI
-<args> := [<arg-kwi> <value>, ...]
-Note: Any issues relating to log levels should be handled before calling this
-  function.
-"
-  
-  (when-not (@log-graph :glog/LogGraph) ;; the graph is not initialized
-    (timbre/warn "graph-log/log-graph is not initialized. Using default")
-    (log-reset!))
-  (letfn [
-          (collect-if-informs-uri
-            [acc [k v]]
-            ;; maybe mint a more expressive kwi
-            (if (@log-graph k :rdf/type :glog/InformsUri)
-              (conj acc (if (keyword? v)
-                          (name v)
-                          v))
-              acc))
-          
-          (add-entry [id-atom g args]
-            ;; side-effect: sets `id-atom` to a newly minted kwi
-            ;; returns `g`' with new entry for @id-atom, per args,
-            ;; incrementing the entry-count of the graph
-            ;; This is called in a swap!
-            (let  [arg-count (count args)
-                   execution-order (entry-count)
-                   maybe-add-type (fn [g]
-                                    (if (g entry-type :rdfs/subClassOf)
-                                      g
-                                      (add g
-                                           [entry-type
-                                            :rdfs/subClassOf :glog/Entry])))
-                   ]
-              (when (not (even? arg-count))
-                              
-                (throw (ex-info "Invalid arguments to log entry. Should be an even number > 0."
-                                {:type ::InvalidArgumentsToLogEntry
-                                 ::args args
-                                 ::arg-count arg-count
-                                 })))
-              (reset! id-atom
-                      (apply mint-kwi (reduce collect-if-informs-uri
-                                              [entry-type
-                                               execution-order
-                                               ]
-                                              (partition 2 args))))
-              (-> g
-                  (maybe-add-type)
-                  (assert-unique :glog/LogGraph
-                                 :glog/entryCount
-                                 (inc (entry-count)))
-                  (add (reduce conj
-                               [@id-atom :rdf/type entry-type
-                                :glog/timestamp (timestamp) 
-                                :glog/executionOrder execution-order
-                                ]
-                               args))
-                  (add [:glog/LogGraph :glog/hasEntry @id-atom]))))
-          
-          ]
-    (let [id-atom (atom nil)]
-      (swap! log-graph (partial add-entry id-atom) args)
-      (if-let [messages (@log-graph @id-atom :glog/message)]
-        (doseq [message messages]
-          (log-message message @id-atom))
-        ;; else
-        (timbre/debug "Graph-logging " @id-atom)) ;; TODO: support rdf/type :glog/Verbose
-      
-      @id-atom
-      )))
+#_(def default-timbre-fn (atom (fn [msg] (timbre/info msg))))
 
+#_(defn standard-logging-fn 
+  "Renders a standard logging message `logging-fn`  if there's a :igraph/message entry in `args`.
+  Where
+  <logging-fn> := fn [msg] -> ? with side-effect: writes to standard logging
+    stream.
+    (default is @default-timbre-fn, which in turn defaults to `timbre/info`)
+  <args> :=[<key> <value>, ...], of which one or more keys may be :glog/message
+  :igraph/message signals a <key> whose value is a mustache-style template
+     to which <desc> will be applied.
+  <desc> is a map derived from <args>, minus :igraph/message keys.
+"
+  ([args]
+   (apply default-timbre-fn (reduce conj [@default-timbre-fn] args))
+   )
+  ([logging-fn args]
+   (let [collect-msgs (fn [[msgs desc] [k v]]
+                        [(if (= k :glog/message)
+                           (conj msgs v)
+                           msgs)
+                         ,
+                         (if-not (= k :glog/message)
+                           (assoc desc k v))
+                         ])
+        [messages desc] (reduce collect-msgs [[]{}] (partition 2 args))
+        ]
+    (if-not (empty? messages)
+      (doseq [message messages]
+        (logging-fn (stache/render message desc)))))))
+
+(defn std-logging-message [& args]
+  {:pre [(even? (count args))]
+   }
+  "Returns: a string suitable for standard logging based on `args`, or nil
+  if there is no :glog/message specification.
+Where
+<args> := {<p> <o>, ....}
+<p> is a keyword naming a property, possibly :glog/message
+<o> is a value, known as <template> if <p> = :glog/message
+<template> is a mustache-style template to which <desc-map> will be applied
+  Of the form `yadda {{<p>}} yadda...'
+<desc-map> := {<p> <o>, ...}, minus any :glog/message. Specifying <o>'s to be 
+  inserted into <template>.
+"
+  (let [collect-msgs (fn [[msgs desc] [k v]]
+                       [(if (= k :glog/message)
+                          (conj msgs v)
+                          msgs)
+                        ,
+                        (if-not (= k :glog/message)
+                          (assoc desc k v)
+                          desc)
+                        ])
+        [messages desc] (reduce collect-msgs [[]{}] (partition 2 args))
+         ]
+     (if-not (empty? messages)
+       (str/join "\n" (map (fn [msg] (stache/render msg desc))
+                           messages)))))
+
+
+(defn log! 
+  "Side-effect: adds an entry to log-graph for <id> minted per `entry-type` and `args`
+  Returns: <id> or nil (if no entry was made)
+  Where
+  <id> is a KWI minted for <entry-type> and whatever <arg-kwi>s are of 
+  :rdf/type :glog/InformsUri in @log-graph.
+  <entry-type> is a KWI
+  <args> := [<arg-kwi> <value>, ...]
+  Note: Any issues relating to log levels should be handled before calling this
+  function.
+  "
+  [entry-type & args]
+  (when (not (let [n (count args)]
+               (and 
+                    (even? n))))
+    
+    (throw (ex-info "Invalid arguments to log entry. Should be an even number"
+                    {:type ::InvalidArgumentsToLogEntry
+                     ::args args
+                     ::arg-count (count args)
+                     })))
+  (when (@log-graph :glog/LogGraph) ;; the graph is initialized
+    (letfn [
+            (collect-if-informs-uri
+              [acc [k v]]
+              ;; maybe mint a more expressive kwi
+              (if (@log-graph k :rdf/type :glog/InformsUri)
+                (conj acc (if (keyword? v)
+                            (name v)
+                            v))
+                acc))
+            
+            (add-entry [id-atom g args]
+              ;; side-effect: sets `id-atom` to a newly minted kwi
+              ;; returns `g`' with new entry for @id-atom, per args,
+              ;; incrementing the entry-count of the graph
+              ;; This is called in a swap!
+              (let  [execution-order (entry-count)
+                     maybe-add-type (fn [g]
+                                      (if (g entry-type :rdfs/subClassOf)
+                                        g
+                                        (add g
+                                             [entry-type
+                                              :rdfs/subClassOf :glog/Entry])))
+                     ]
+                
+                (reset! id-atom
+                        (apply mint-kwi (reduce collect-if-informs-uri
+                                                [entry-type
+                                                 execution-order
+                                                 ]
+                                                (partition 2 args))))
+                (-> g
+                    (maybe-add-type)
+                    (assert-unique :glog/LogGraph
+                                   :glog/entryCount
+                                   (inc (entry-count)))
+                    (add (reduce conj
+                                 [@id-atom :rdf/type entry-type
+                                  :glog/timestamp (timestamp) 
+                                  :glog/executionOrder execution-order
+                                  ]
+                                 args))
+                    (add [:glog/LogGraph :glog/hasEntry @id-atom]))))
+            
+            ] ;; letfn
+      (let [id-atom (atom nil)]
+        (swap! log-graph (partial add-entry id-atom) args)
+        @id-atom
+        ))))
 
 (defn log-value!
   "Returns `value`
   Side effect: logs <id> :glog/value `value`, plus `other-args` into log-graph
   Where
-  <"
+  <entry-type> is a keyword naming the type of <entry>
+  <value> is the value being logged before it's returned.
+  <other-args> := [<p> <o>, ...]
+  <entry> is an entry in @glog/log-graph
+  <p> is a keyword naming a property of <entry>
+  <o> is a value asserted for <p> s.t. [<entry> <p> <o>] in the log.
+  "
   ([entry-type value]
    (log-value! entry-type [] value)
    )
@@ -330,7 +395,6 @@ Note: Any issues relating to log levels should be handled before calling this
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR VIEWING LOG CONTENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (defn entries
   "Returns [<entry-id>, ...] for `entry-type` in `g` ordered by :glog/executionOrder

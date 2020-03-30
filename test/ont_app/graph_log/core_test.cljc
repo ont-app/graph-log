@@ -283,6 +283,11 @@
                ::asdf #{"asdf"}
                :glog/value #{43}}])))))
           
+(deftest standard-logging
+  (testing "std-logging-message"
+    (is (= (glog/std-logging-message [:glog/message "This is a number: {{number}}"
+                                      :number 42])
+           "This is a number: 42"))))
 
   
 

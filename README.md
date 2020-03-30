@@ -12,6 +12,7 @@ useful diagnostics.
 ## Contents
 - [Dependencies](#Dependencies)
 - [Simple usage](#Simple_usage)
+- [Standard logging with `std-logging-message`](#h3-standard-logging-with-std-logging-message)
 - [More advanced usage](#More_advanced_usage)
   - [Configuring the `log-graph`](#Configuring_the_log-graph)
   - [Adminstration](#Adminstration)
@@ -177,6 +178,26 @@ ad-hoc by the user, but hopefully it's clear that as your program
 starts to mature, certain entry classes can be given attributes that
 lend themselves as inputs to helpful diagnostic functions.
 
+<a name="h3-standard-logging-with-std-logging-message"></a>
+### Standard logging with `std-logging-message`
+The `std-logging-message` function will generate a string based on the
+`:glog/message` property, bound to a mustche-style template, whose
+values are populated by other keys in the same call. This can be
+passed to standard logging functions. The taoensso.timbre library is
+loaded with graph-log library, so this will be logged if
+timbre/*config* is configured for :debug or lower:
+
+Example:
+```
+> (timbre/debug
+  (std-logging-message 
+    :glog/message "This is a number: {{my-ns/number}}"
+    :my-ns/number 42))
+    
+```
+
+See also the :glog/message vocabulary discussed [below](#h5-glog-message).
+
 <a name="More_advanced_usage"></a>
 ### More advanced usage
 
@@ -280,6 +301,9 @@ As we saw above, each log expression creates a class of log entries if it doesn'
 
 Execution order and timestamp were already discussed above.
 
+<a name="h5-glog-message"></a>
+##### `:glog/message`
+
 You may also optionally add a message which will be printed to the
 traditional logging stream. It supports {{mustache}} templating:
 
@@ -292,6 +316,10 @@ traditional logging stream. It supports {{mustache}} templating:
 :my-log/starting-get-the-answer_2
 >
 ```
+
+<a name="h5-glog-informs-uri"></a>
+##### `:glog/InformsUri`
+
 
 Declaring your property to be of type `InformsUri` creates more
 expressive entry names:
@@ -308,6 +336,9 @@ expressive entry names:
 
 This should only be used for properties whose values are expected to
 render well as strings.
+
+<a name="h5-glog-annotate"></a>
+##### `glog/annotate!`
 
 You can also use the `annotate!` function to add arbitrary triples to
 `log-graph`:
@@ -391,6 +422,28 @@ their arguments, if the current logging level is >= the global logging
 level, with the exception described in the next section.
 
 There are of course corresponding macros for all the other log levels.
+
+##### Logging levels and standard logging
+
+In cases where the logging statment includes a `:glog/message` clause,
+the logging levels also inform standard messages, keyed to the value of
+(:level timbre/*config*).
+
+When logging levels are appropriate, standard logging messages will be
+issued regardless of the state of the log-graph:
+
+```
+> (reset! glog/log-graph nil) ;; turning off all graph-logging
+> (:level timbre/*config*)
+:debug
+> (debug :my-log/demoning-messages 
+    :glog/message "This is a number: {{my-log/number}}"
+    :my-log/number 42)
+yadda yadda WARN [yadda] - This is a number: 42
+nil
+> 
+
+```
 
 <a name="Setting_warning_levels_of_entry_types"></a>
 ##### Setting warning levels of entry types
