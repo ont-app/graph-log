@@ -260,7 +260,7 @@
               (is (= (igraph/normal-form gb)
                      (igraph/normal-form B-not-A)))
             )))))))
-    
+
 (defn test-log-value-at-level []
   (value-info ::test-value-info 42)
   (value-info ::test-value-info [::asdf "asdf"] 43))
@@ -285,8 +285,8 @@
           
 (deftest standard-logging
   (testing "std-logging-message"
-    (is (= (glog/std-logging-message [:glog/message "This is a number: {{number}}"
-                                      :number 42])
+    (is (= (glog/std-logging-message :glog/message "This is a number: {{number}}"
+                                     :number 42)
            "This is a number: 42"))))
 
   
