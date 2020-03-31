@@ -8,11 +8,15 @@ This this intended as a tool to be able to construct a graph of
 queryable, inter-related logging events which can serve as a basis for
 useful diagnostics.
 
+Standard logging is implemented with timbre. Standard logging and
+graph-logging are independent until they are brought under a single
+umbrella when using the logging levels macros.
+
 
 ## Contents
 - [Dependencies](#Dependencies)
 - [Simple usage](#Simple_usage)
-- [Standard logging with `std-logging-message`](#h3-standard-logging-with-std-logging-message)
+- [Standard logging](#h3-standard-logging)
 - [More advanced usage](#More_advanced_usage)
   - [Configuring the `log-graph`](#Configuring_the_log-graph)
   - [Adminstration](#Adminstration)
@@ -50,13 +54,26 @@ Cljdoc.org hosts [documentation](https://cljdoc.org/d/ont-app/graph-log/0.1.1).
 <a name="Simple_usage"></a>
 ### Simple usage
 
+This feature maintains a graph in memory, and is disabled by default.
+
+To enable:
+```
+> (glog/log-reset!)
+#object[ont_app.igraph.graph.Graph yadda yadda]
+>
+```
+
+This will instantiate a graph globally declared as `@glog/log-graph`,
+populated with the basic vocabulary that informs the graph-logging
+process.
+
+
 ```
 > (defn get-the-answer [whos-asking]
     (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
     (println "Hello " whos-asking ", here's the answer...")
     (glog/log-value! :my-log/returning-get-the-answer 42))
 
-> (glog/log-reset!)
 > (get-the-answer "Douglas")
 Hello Douglas, here's the answer...
 42
@@ -178,14 +195,30 @@ ad-hoc by the user, but hopefully it's clear that as your program
 starts to mature, certain entry classes can be given attributes that
 lend themselves as inputs to helpful diagnostic functions.
 
-<a name="h3-standard-logging-with-std-logging-message"></a>
-### Standard logging with `std-logging-message`
-The `std-logging-message` function will generate a string based on the
-`:glog/message` property, bound to a mustche-style template, whose
-values are populated by other keys in the same call. This can be
-passed to standard logging functions. The taoensso.timbre library is
-loaded with graph-log library, so this will be logged if
-timbre/*config* is configured for :debug or lower:
+<a name="h3-standard-logging"></a>
+### Standard logging
+
+Standard logging is done with timbre, which should be configured
+directly using its API. 
+
+There is however one utility:
+
+#### `std-logging-message`
+
+|KWI |Description |
+:--- |:---------- |
+|:glog/message | A string or Mustache-type template to print to the standard logging stream via `taesano.timbre`. The flattened description of the entry will be applied to its value to resolve template {{parameters}}.
+
+
+The `std-logging-message` function expects a set of property/value
+pairs, one of whose properties is :glog/message, paired with a
+mustache-type template string. It will generate a string based on said
+template, whose parameters should match other properies in the same
+call (minus :colons).
+
+This can be passed to standard logging functions. The taoensso.timbre
+a dependency of this library, so the following example will be logged
+if timbre/*config* is configured for :debug or lower:
 
 Example:
 ```
@@ -195,6 +228,8 @@ Example:
     :my-ns/number 42))
     
 ```
+
+Standard logging and graph-logging can function independently, but are brought together under the common umbrella of the [levels macros](#h4-logging-levels).
 
 See also the :glog/message vocabulary discussed [below](#h5-glog-message).
 
@@ -369,6 +404,7 @@ Here's the vocabulary that relates to logging levels:
 |:glog/FATAL |A standard logging level |
 |:glog/ALL |Signals that the log should record all log statements |
 
+
 <a name="Setting_the_global_log_level"></a>
 ##### Setting the global log level
 
@@ -422,6 +458,14 @@ their arguments, if the current logging level is >= the global logging
 level, with the exception described in the next section.
 
 There are of course corresponding macros for all the other log levels.
+
+##### Standard logging per level
+
+Each of these macros also makes calls to standard logging functions in
+cases where:
+- timbre is configured to be senstive to the operative debug level 
+- the entry has a _:glog/message_ clause.
+
 
 ##### Logging levels and standard logging
 
