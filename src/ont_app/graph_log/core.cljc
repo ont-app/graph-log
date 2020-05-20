@@ -462,8 +462,7 @@ Where
    (query g q)))
 
 ^:traversal-fn
-(defn search [inc-or-dec test g c found q]
-  
+(defn search 
   "Returns [c found [previous-index]] for `test` of <i>th  entry per `q` and inc-or-dec
   See also the IGraph docs for traversal functions.
 
@@ -482,6 +481,10 @@ NOTE: typically this is used as a partial application over <test>
                                  nil
                                  [<entry-id>])
 "
+  [inc-or-dec test g c found q]
+  {:pre [(fn? test)
+         ]
+   }
   (let [_entries (or (:entries c)
                      (entries g :all))
         i-or-entry (first q)
