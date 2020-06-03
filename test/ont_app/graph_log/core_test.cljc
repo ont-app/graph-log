@@ -114,13 +114,14 @@
   (testing "Warning levels"
     (glog/log-reset!)
     (is (= (glog/log! :my-log/demoing-log-level)
+           :my-log/demoing-log-level_0
            ))
     (is (= (glog/show :my-log/demoing-log-level)
            {:rdfs/subClassOf #{:glog/Entry}}))
     
     (glog/set-level! :my-log/demoing-log-level :glog/DEBUG)
-    (is (= (glog/show :my-log/demoing-log-level))
-        {:rdfs/subClassOf #{:glog/Entry}, :glog/level #{:glog/DEBUG}})
+    (is (= (glog/show :my-log/demoing-log-level)
+           {:rdfs/subClassOf #{:glog/Entry}, :glog/level #{:glog/DEBUG}}))
     (glog/log-reset! (add glog/ontology 
                           [:glog/LogGraph :glog/level :glog/DEBUG]))
     (is (= (@glog/log-graph :glog/LogGraph :glog/level)

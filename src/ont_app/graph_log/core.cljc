@@ -62,7 +62,7 @@
   [this-level that-level]
   {:pre [(keyword? this-level)
          (keyword? that-level)]
-   :post [#(boolean? %)]
+   :post [(boolean? %)]
    }
   (when (not @level-priorities)
     ;; populate the level-priorities cache
@@ -102,7 +102,7 @@
 
 (declare entries)
 #?(:clj
-   (defn archive-path [g]
+   (defn archive-path 
   "Returns a canonical name for an archive file for a log
 Where
 <g> is a log-graph
@@ -112,22 +112,23 @@ Vocabulary:
   should be achived.
   Defaults to '/tmp'
 "
-  (let [es (entries g)
-        date-string (fn [i]
-                      (str (if (= (count es) 0)
-                             (timestamp)
-                             (the (g (es i) :glog/timestamp)))))
+     [g]
+     (let [es (entries g)
+           date-string (fn [i]
+                         (str (if (= (count es) 0)
+                                (timestamp)
+                                (the (g (es i) :glog/timestamp)))))
 
                       
-        ]
-    
-    (stache/render
-     "{{directory}}/{{start}}-{{stop}}.edn"
-     {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
-                     "/tmp")
-      :start (date-string 0)
-      :stop (date-string (count es))
-      })))
+           ]
+       
+       (stache/render
+        "{{directory}}/{{start}}-{{stop}}.edn"
+        {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
+                        "/tmp")
+         :start (date-string 0)
+         :stop (date-string (count es))
+         })))
    )
 
 #?(:clj
@@ -187,20 +188,22 @@ Vocabulary:
                          initial-graph)))))
 
 
-(defn set-level! [element level]
+(defn set-level! 
   "Side-effect, adds `args` to entry for `element` in log-graph
 Where
 <args> := [<predicate> <object>, ...]
 <element> is an element of the log-graph
 "
+  [element level]
   (swap! log-graph assert-unique element :glog/level level))
 
-(defn annotate! [element & args]
+(defn annotate! 
   "Side-effect, adds `args` to entry for `element` in log-graph
 Where
 <args> := [<predicate> <object>, ...]
 <element> is an element of the log-graph
 "
+  [element & args]
   (when-not (subjects @log-graph)
     (throw (ex-info "Annotating an empty log-graph"
                     {:element element
@@ -266,9 +269,7 @@ Where
       (doseq [message messages]
         (logging-fn (stache/render message desc)))))))
 
-(defn std-logging-message [& args]
-  {:pre [(even? (count args))]
-   }
+(defn std-logging-message 
   "Returns: a string suitable for standard logging based on `args`, or nil
   if there is no :glog/message specification.
 Where
@@ -280,6 +281,9 @@ Where
 <desc-map> := {<p> <o>, ...}, minus any :glog/message. Specifying <o>'s to be 
   inserted into <template>.
 "
+  [& args]
+  {:pre [(even? (count args))]
+   }
   (let [collect-msgs (fn [[msgs desc] [k v]]
                        [(if (= k :glog/message)
                           (conj msgs v)
@@ -308,10 +312,7 @@ Where
   function.
   "
   [entry-type & args]
-  (when (not (let [n (count args)]
-               (and 
-                    (even? n))))
-    
+  (when (not (even? (count args)))
     (throw (ex-info "Invalid arguments to log entry. Should be an even number"
                     {:type ::InvalidArgumentsToLogEntry
                      ::args args
@@ -461,16 +462,16 @@ Where
   ([g q]
    (query g q)))
 
-^:traversal-fn
+;; traversal function
 (defn search 
-  "Returns [c found [previous-index]] for `test` of <i>th  entry per `q` and inc-or-dec
+  "Returns [c found [previous-index]] for `entry-test` of <i>th  entry per `q` and inc-or-dec
   See also the IGraph docs for traversal functions.
 
   Where
   <c> is the (ignored) traversal context
   <found> is nil or the first previous entry to pass <test>
   <previous-index> decrements the head of <q>, or empty if found or <i> < 0
-  <test> := fn [g entry] -> boolean
+  <entry-test> := fn [g entry] -> boolean
   <q> := [<entry> or <i> [i] if still searching or [] if found. decrementing per iteration
   <i> is the execution order to test
   <inc-or-dec> :~ #{inc dec}, inc to search forward dec to search backward.
@@ -481,8 +482,8 @@ NOTE: typically this is used as a partial application over <test>
                                  nil
                                  [<entry-id>])
 "
-  [inc-or-dec test g c found q]
-  {:pre [(fn? test)
+  [inc-or-dec entry-test g c found q]
+  {:pre [(fn? entry-test)
          ]
    }
   (let [_entries (or (:entries c)
@@ -497,7 +498,7 @@ NOTE: typically this is used as a partial application over <test>
                   :out-of-bounds)
                 i-or-entry)
         found? (and (not (= :out-of-bounds entry))
-                    (test g entry))
+                    (entry-test g entry))
         ]
     [(assoc c :entries _entries)
      ,
@@ -612,11 +613,12 @@ NOTE: typically this is used as a partial application over <test>
            ]
      (reduce-spo remove-spo-variants empty-graph g))))
 
-(defn compare-shared-entries [g1 g2]
+(defn compare-shared-entries 
   "Returns an IGraph containing content shared between `g1` and `g2`
 Where
 <g1>, <g2> are @log-graph's from two different sessions.
 "
+  [g1 g2]
   (let [shared-keys (set/intersection (set (igraph/subjects g1))
                                       (set (igraph/subjects g2)))
         g1' (add empty-graph (select-keys (g1) shared-keys))
@@ -626,7 +628,7 @@ Where
      (remove-variant-values g1')
      (remove-variant-values g2'))))
 
-(defn find-divergence [log1 log2]
+(defn find-divergence 
   "Returns [<same> [<e1> <e2>] for `log1` and `log2`
 Where
 <same> := [<shared-event>, ...]
@@ -634,6 +636,7 @@ Where
 <log1> <log2> are @log-graph's from two different sessions, 
   typically reflecting some minor change in the same code base.
 "
+  [log1 log2]
   (letfn [(sub-graph [g e]
             (remove-variant-values
              (add empty-graph (select-keys (g) #{e}))))
