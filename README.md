@@ -1,6 +1,4 @@
-<img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/>
-
-# ont-app/graph-log
+# <img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/> ont-app/graph-log
 
 Code and a small ontology for logging to an
 [IGraph](https://github.com/ont-app/igraph) in clojure(script). It is
