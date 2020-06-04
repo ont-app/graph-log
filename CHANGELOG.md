@@ -1,24 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
-## [Unreleased]
-### Changed
-- Add a new arity to `make-widget-async` to provide a different widget shape.
+## 0.1.1 - 2020-06-03
+- standard logging an graph logging are orthogonal
+  - adding a :glog/message statement will be sent to std logging even
+    if log-graph was never enabled.
+- Fixed some errors in quotation in value-* functions.
+- Timbre version upped to 4.11.0-alpha1
 
-## [0.1.1] - 2019-11-06
-### Changed
-- Documentation on how to make the widgets.
-
-### Removed
-- `make-widget-sync` - we're all async, all the time.
-
-### Fixed
-- Fixed widget maker to keep working when daylight savings switches over.
-
-## 0.1.0 - 2019-11-06
-### Added
-- Files from the new template.
-- Widget maker public API - `make-widget-sync`.
-
-[Unreleased]: https://github.com/your-name/graph-log/compare/0.1.1...HEAD
-[0.1.1]: https://github.com/your-name/graph-log/compare/0.1.0...0.1.1
