@@ -136,6 +136,14 @@ the contents of the graph.
        :glog/priority 7
        :rdfs/comment "Signals that the log should not record events."
        ]
+      [:glog/iteration
+       :rdf/type :rdf/Property
+       :rdfs/domain :glog/Entry
+       :rdfs/range :xsd/nonNegativeInteger
+       :rdfs/comment "
+Optional. Asserts the number of times this log has been reset. When non-nil this will inform the KWI of each entry."
+       ]
+      
       [:glog/executionOrder
        :rdf/type :rdf/Property
        :rdfs/domain :glog/Entry
@@ -154,7 +162,7 @@ Current time in milliseconds at time the Entry was created."
       [:glog/InformsUri
        :rdfs/subClassOf :rdf/Property
        :rdfs/comment "
-Refers to a KWI whose name should inform the minting of each new 
+Refers to a property KWI whose name should inform the minting of each new 
 Entry's URI, in addition to its class and execution order, the better to 
 understand at a glance what the log entry is about."
        ]
@@ -169,12 +177,6 @@ applied to its value to resolve template {{parameters}}.
 "
        ]
       ;; ARCHIVING THE LOG GRAPH ON RESET
-      [:glog/ArchiveFn
-       :rdf/type :igraph/Functon
-       :rdfs/comment "A function [g] -> archive-path, with side-effect of saving
-the current log before resetting. Only invoked if :igraph/compiledAs is 
-asserted with an executable function."
-       ]
       [:glog/archivePathFn
        :rdfs/domain :igraph/Graph
        :rdfs/comment "Asserts a function [g] -> archive-path to which

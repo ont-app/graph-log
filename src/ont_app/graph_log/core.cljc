@@ -8,7 +8,6 @@
 
    ;; 3rd party libraries
    [taoensso.timbre :as timbre]
-   ;;[selmer.parser :as selmer]
    [cljstache.core :as stache]
    ;; ont-app libraries
    [ont-app.igraph.core :as igraph
@@ -47,10 +46,11 @@
 
 (def log-graph (atom empty-graph))
 
+
 (def default-log-level :glog/INFO)
 
 (def level-priorities
-  "Caches level priorities"
+  "Caches level priorities, to inform `level>=`"
   (atom nil))
 
 (defn level>=
@@ -62,7 +62,7 @@
   [this-level that-level]
   {:pre [(keyword? this-level)
          (keyword? that-level)]
-   :post [(boolean? %)]
+   :post [#(boolean? %)]
    }
   (when (not @level-priorities)
     ;; populate the level-priorities cache
@@ -98,96 +98,36 @@
   #?(:cljs
      (system-time)))
 
-;; ARCHIVING TO THE LOCAL FILE SYSTEM IN CLJ
 
-(declare entries)
-#?(:clj
-   (defn archive-path 
-  "Returns a canonical name for an archive file for a log
-Where
-<g> is a log-graph
-
-Vocabulary:
-:glog/archiveDirectory -- asserts the name of the directory to which logs
-  should be achived.
-  Defaults to '/tmp'
-"
-     [g]
-     (let [es (entries g)
-           date-string (fn [i]
-                         (str (if (= (count es) 0)
-                                (timestamp)
-                                (the (g (es i) :glog/timestamp)))))
-
-                      
-           ]
-       
-       (stache/render
-        "{{directory}}/{{start}}-{{stop}}.edn"
-        {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
-                        "/tmp")
-         :start (date-string 0)
-         :stop (date-string (count es))
-         })))
-   )
-
-#?(:clj
-   (defn save-to-archive [g]
-     (letfn [(remove-compiled [g s p o]
-               ;; Don't wanna choke the reader
-               ;; when we slurp 
-               (if (= p :igraph/compiledAs)
-                 g
-                 (add g [s p o])))
-             (get-archive-path-fn [g]
-               (or (the (g :glog/archivePathFn :igraph/compiledAs))
-                   archive-path))
-           
-             ]
-       (let [archive-path-fn (get-archive-path-fn g)
-             archive-path (archive-path-fn g)
-             g (reduce-spo remove-compiled empty-graph g)
-             ]
-
-       (igraph/write-to-file archive-path g)
-        ))))
+(defn archiving? 
+  "True iff archiving is enabled for `g`
+  Where:
+  - `g` is an IGraph being used as a log-graph (default [[log-graph]])
+  "
+  ([]
+   (archiving? @log-graph))
+  ([g]
+   ;; TODO: generalize this as other options come into play.
+   (g :glog/LogGraph :glog/archiveDirectory)))
 
 
-;; NO READER MACROS BEYOND THIS POINT
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR LOG MAINTENANCE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn log-reset!
   "Side-effect: resets @log-graph to `initial-graph`
-  Side-effect: if (initial-graph:glog/SaveToFn igraph/compiledAs <path-fn>),
-    the previous contents of the graph will be spit'd to <output-path>
   Where
-  <initial-graph> is an IGraph, informed by ont-app.graph-log.core/ontology
-  <fn> := fn [g] -> <output-path>
-  <output-path> is a valid path specification , possibly starting with file://
+  - <initial-graph> is an IGraph, informed by ont-app.graph-log.core/ontology
+    - optional. Default is core/ontology.
   "
   ([]
    (log-reset! ontology))
   ([initial-graph]
-   (let [archive-file (atom nil)]
-     (when-let [archive-fn
-                (the (@log-graph :glog/ArchiveFn :igraph/compiledAs))]
-       (reset! archive-file (archive-fn (difference @log-graph
-                                                      initial-graph))))
-     ;; Save the previous log to the path provided by SaveToFn
-     (timbre/debug "archive file:" @archive-file)
-     (reset! log-graph (if @archive-file
-                         (add initial-graph
-                              [:glog/LogGraph
-                               :glog/continuingFrom
-                               @archive-file])
-                         initial-graph)))))
-
-
+   (reset! log-graph initial-graph)))
+   
 (defn set-level! 
   "Side-effect, adds `args` to entry for `element` in log-graph
 Where
@@ -211,7 +151,6 @@ Where
                      })))
   (swap! log-graph add (reduce conj [element] args)))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR ENTERING TO LOG
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -221,53 +160,6 @@ Where
   ([] (entry-count @log-graph))
   ([g] (or (the (g :glog/LogGraph :glog/entryCount))
            0)))
-
-#_(defn log-message [message entry-id]
-  "Side-effect: writes a message to the timbre log stream.
-Where
-<message> may be a selmer template, in which case the flattened
-  description of <entry-id> will be applied.
-<entry-id> is a KWI s.t. (@log-graph entry-id :glog/message <message>)
-"
-  (let [desc (igraph/flatten-description (@log-graph entry-id))
-        level-p (igraph/t-comp [(traverse-link :rdf/type)
-                                (traverse-link :glog/level)])
-        level (or (the (@log-graph entry-id level-p))
-                  :debug)
-        ]
-    (timbre/log (keyword (str/lower-case (name level)))
-                (stache/render message desc))))
-
-#_(def default-timbre-fn (atom (fn [msg] (timbre/info msg))))
-
-#_(defn standard-logging-fn 
-  "Renders a standard logging message `logging-fn`  if there's a :igraph/message entry in `args`.
-  Where
-  <logging-fn> := fn [msg] -> ? with side-effect: writes to standard logging
-    stream.
-    (default is @default-timbre-fn, which in turn defaults to `timbre/info`)
-  <args> :=[<key> <value>, ...], of which one or more keys may be :glog/message
-  :igraph/message signals a <key> whose value is a mustache-style template
-     to which <desc> will be applied.
-  <desc> is a map derived from <args>, minus :igraph/message keys.
-"
-  ([args]
-   (apply default-timbre-fn (reduce conj [@default-timbre-fn] args))
-   )
-  ([logging-fn args]
-   (let [collect-msgs (fn [[msgs desc] [k v]]
-                        [(if (= k :glog/message)
-                           (conj msgs v)
-                           msgs)
-                         ,
-                         (if-not (= k :glog/message)
-                           (assoc desc k v))
-                         ])
-        [messages desc] (reduce collect-msgs [[]{}] (partition 2 args))
-        ]
-    (if-not (empty? messages)
-      (doseq [message messages]
-        (logging-fn (stache/render message desc)))))))
 
 (defn std-logging-message 
   "Returns: a string suitable for standard logging based on `args`, or nil
@@ -344,11 +236,15 @@ Where
                      ]
                 
                 (reset! id-atom
-                        (apply mint-kwi (reduce collect-if-informs-uri
-                                                [entry-type
-                                                 execution-order
-                                                 ]
-                                                (partition 2 args))))
+                        (apply mint-kwi
+                               (reduce collect-if-informs-uri
+                                       (vec (filter some?
+                                                    [entry-type
+                                                     ;; todo document :iteration
+                                                     (the (g :glog/LogGraph
+                                                             :glog/iteration))
+                                                     execution-order]))
+                                       (partition 2 args))))
                 (-> g
                     (maybe-add-type)
                     (assert-unique :glog/LogGraph
@@ -414,14 +310,14 @@ Where
   
   ([g entry-type]
    (let [execution-order (fn [entry] (the (g entry :glog/executionOrder)))
-         matches-type (fn [entry] (g entry :rdf/type entry-type))
+         matches-type? (fn [entry] (g entry :rdf/type entry-type))
          _entries (sort-by execution-order (g :glog/LogGraph :glog/hasEntry))
          ]
      (into []
            (if (= entry-type :all)
              _entries
              ;; else
-             (filter matches-type _entries))))))
+             (filter matches-type? _entries))))))
 
 
 (defn ith-entry
@@ -430,7 +326,7 @@ Where
   Where
   <entry-id> is keyword naming the entry
   <description> is the normal-form description of <entry-id> in <g>
-  <g> is a log-graph (the current one by default)
+  <g> is a log-graph (@log-graph by default)
   "
   ([i]
    (ith-entry @log-graph i))
@@ -472,7 +368,8 @@ Where
   <found> is nil or the first previous entry to pass <test>
   <previous-index> decrements the head of <q>, or empty if found or <i> < 0
   <entry-test> := fn [g entry] -> boolean
-  <q> := [<entry> or <i> [i] if still searching or [] if found. decrementing per iteration
+  <q> := [<entry> or <i> [i] if still searching or [] if found. inc/dec-ing
+    per iteration
   <i> is the execution order to test
   <inc-or-dec> :~ #{inc dec}, inc to search forward dec to search backward.
   <entry> is the <i>th entry in <g>
@@ -491,7 +388,12 @@ NOTE: typically this is used as a partial application over <test>
         i-or-entry (first q)
         i (if (number? i-or-entry)
             i-or-entry
-            (the (g i-or-entry :glog/executionOrder)))
+            (or (the (g i-or-entry :glog/executionOrder))
+                (throw (ex-info (str i-or-entry
+                                     " does not have an execution order")
+                                {:type ::NoExecutionOrderInSearch
+                                 ::i-or-entry i-or-entry
+                                 ::g g}))))
         entry (if (number? i-or-entry)
                 (if (< -1 i-or-entry (count _entries))
                   (_entries i-or-entry)
@@ -545,7 +447,6 @@ NOTE: typically this is used as a partial application over <test>
   ([g test start]
    (traverse g (partial search inc test) nil [start])))
 
-;; TODO: add support to search archived logs following continuingFrom links.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UTILITIES SUPPORTING COMPARISON OF TWO LOGS
@@ -622,7 +523,7 @@ Where
   (let [shared-keys (set/intersection (set (igraph/subjects g1))
                                       (set (igraph/subjects g2)))
         g1' (add empty-graph (select-keys (g1) shared-keys))
-        g2' (add empty-graph  (select-keys (g2) shared-keys))
+        g2' (add empty-graph (select-keys (g2) shared-keys))
         ]
     (igraph/difference
      (remove-variant-values g1')
@@ -682,3 +583,7 @@ Where
     (println "In G2:")
     (pp/pprint (igraph/normal-form d2))
     [d1 d2]))
+
+(defn -main [& _] )
+
+

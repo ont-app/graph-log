@@ -3,17 +3,24 @@
   :url "https://github.com/ont-app/graph-log"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
-  :dependencies [[org.clojure/clojure "1.10.1"]
+  :dependencies [;; deps adjustments
+                 [com.taoensso/timbre "4.7.0"] ;;
+                 ;; Later versions give Not supported: class clojure.core$print
+                 ;; when I use the cljs.repl.node
+                 ;; clojure
+                 [org.clojure/clojure "1.10.1"]
                  [org.clojure/clojurescript "1.10.597"]
+                 [org.clojure/core.async "1.2.603"]
                  [org.clojure/spec.alpha "0.2.176"]
                  ;; 3rd party libraries
-                 [com.taoensso/timbre "4.11.0-alpha1"] ;; "4.10.0"] ;; basic logging
                  [cljstache "2.0.5"]
+                 ;; [com.fzakaria/slf4j-timbre "0.3.19"]
+                 ;; [com.taoensso/timbre "4.11.0-alpha1"] ;; basic logging
                  [lein-doo "0.1.11"] ;; cljs testing
                  ;;
                  [ont-app/igraph "0.1.5"]
-                 [ont-app/igraph-vocabulary "0.1.1"] 
-                 [ont-app/vocabulary "0.1.1"]
+                 [ont-app/igraph-vocabulary "0.1.2"] 
+                 [ont-app/vocabulary "0.1.2"]
                  ]
   :plugins [[lein-codox "0.10.6"]
             [lein-cljsbuild "1.1.7"
@@ -21,6 +28,7 @@
             [lein-doo "0.1.11"]
             ]
 
+  :repl-options {:init-ns ont-app.graph-log.core}
   :target-path "target/%s"
   :resource-paths ["resources" "target/cljsbuild"]
   
@@ -50,5 +58,5 @@
      "resources/test"
      :target-path
      ]  
-  :repl-options {:init-ns ont-app.graph-log.core}
   )
+       

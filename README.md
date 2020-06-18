@@ -1,6 +1,4 @@
-<img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/>
-
-# ont-app/graph-log
+<img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/># ont-app/graph-log
 
 Code and a small ontology for logging to an
 [IGraph](https://github.com/ont-app/igraph) in clojure(script). It is
@@ -10,9 +8,10 @@ This this intended as a tool to be able to construct a graph of
 queryable, inter-related logging events which can serve as a basis for
 useful diagnostics.
 
-Standard logging is implemented with timbre. Standard logging and
-graph-logging are independent until they are brought under a single
-umbrella when using the logging levels macros.
+Standard logging is implemented with
+[timbre](https://github.com/ptaoussanis/timbre). Standard logging and
+graph-logging are independent except for the `message` construct
+decribed below.
 
 ## Contents
 - [Dependencies](#Dependencies)
@@ -23,10 +22,11 @@ umbrella when using the logging levels macros.
   - [Adminstration](#Adminstration)
   - [Log entries](#Log_entries)
   - [Logging levels](#h4-logging-levels)
-    - [Setting warning levels of entry types](#Setting_warning_levels_of_entry_types)
+    - [Setting logging levels of entry types](#Setting_warning_levels_of_entry_types)
     - [Setting the global log level](#Setting_the_global_log_level)
-  - [Archiving](#Archiving)
+
 - [Utilities](#Utilities)
+  - [Archiving](#Archiving)
   - [Searching forward and backward](#Searching_forward_and_backward)
   - [Comparing logs](#Comparing_logs)
 - [License](#License)
@@ -43,11 +43,11 @@ Cljdoc.org hosts [documentation](https://cljdoc.org/d/ont-app/graph-log/0.1.1).
 ```
 (ns ....
  (:require 
- [ont-app.igraph.core :as igraph]        ;; The IGraph protocol
- [ont-app.igraph.graph :as graph]        ;; Default implementation of IGraph
- [ont-app.graph-log.core :as glog]       ;; the graph-log library
- [:ont-app.graph-log.levels :refer :all] ;; handles log levels
- [taoensso.timbre :as timbre]            ;; standard logging clj/cljs
+   [ont-app.igraph.core :as igraph]        ;; The IGraph protocol
+   [ont-app.igraph.graph :as graph]        ;; Default implementation of IGraph
+   [ont-app.graph-log.core :as glog]       ;; the graph-log library
+   [ont-app.graph-log.levels :refer :all]  ;; log level macros
+   [taoensso.timbre :as timbre]            ;; standard logging clj/cljs
    ...
    ))
 ```
@@ -134,8 +134,8 @@ Let's break out the KWIs in the example
 |:my-log/starting-get-the-answer |coined _ad hoc_ to name a class of log entries|
 |:my-log/returning-get-the-answer |coined _ad hoc_ to name another class of log entries|
 |:rdf/type |This correponds to a [URI in RDF's public vocabulary](https://www.w3.org/TR/rdf-schema/#ch_type) to assert an instance of a class. Part of the ont-app's design philosophy involves leveraging and integrating with public vocabularies, without a direct dependency on the full RDF stack.  |
-|:my-log/returning-get-the-answer_1 |Minted automatically to name the (zero-basedd) 1th entry in the `log-graph`, an instance of _returning-get-the-answer_|
-|:glog/timestamp |The timestamp in milliseconds associated with the entry |
+|:my-log/returning-get-the-answer_1 |Minted automatically to name the (zero-based) 1th entry in the `log-graph`, an instance of _returning-get-the-answer_|
+|:glog/timestamp |The timestamp in [milliseconds](https://en.wikipedia.org/wiki/Unix_time) associated with the entry |
 |:glog/executionOrder| Asserts that this is the ith entry in the `log-graph`|
 |:my-log/whos-asking |a property coined _ad hoc_ for the _starting-get-the-answer_ entry type.|
 |:glog/value |the value returned by the expression being traced by any call to glog/log-value!|
@@ -152,13 +152,11 @@ We can query `@log-graph` with `query-log`:
 >
 ```
 
-This is the query format used by `ont-app.igraph.graph/Graph`. It
+This is the query format used by
+`[ont-app.igraph.graph/Graph](https://github.com/ont-app/igraph#Graph)`. It
 consists of a graph pattern expressed as a vector of triples, each
 elment of which is either a KWI, a literal value, or a :?variable. It
-returns a set of {:?variable `value`, ...} maps. Other implementations
-of IGraph will have their own _native representations_, and their own
-query formats. The `query-log` function is the only part of
-`graph-log` where differing query formats will come into play.
+returns a set of {:?variable `value`, ...} maps.
 
 An IGraph can also be applied as a function with 0, 1, 2, or 3 arities:
 ```
@@ -199,8 +197,9 @@ lend themselves as inputs to helpful diagnostic functions.
 <a name="h3-standard-logging"></a>
 ### Standard logging
 
-Standard logging is done with timbre, which should be configured
-directly using its API. 
+Standard logging is done with
+[timbre](https://github.com/ptaoussanis/timbre), which should be
+configured directly using its API.
 
 There is however one utility:
 
@@ -245,7 +244,12 @@ The graph can be reset
 > (log-reset! _initial-graph_) -> _initial-graph_
 ```
 
-The default initial graph is `ont-app.graph-log.core/ontology`
+This will replace any previous contents of @log-graph with
+_initial-graph_. There is also an archiving utility (discussed below)
+which can save the previous contents of @log-graph ansynchronously.
+
+The default initial graph is
+`ont-app.graph-log.core/ontology`
 
 ```
 > (log-reset!) 
@@ -255,7 +259,7 @@ The default initial graph is `ont-app.graph-log.core/ontology`
 
 The `ont-app.igraph.graph/Graph` data structure is immutable. The
 graph `ont-app.graph-log.core/log-graph` is an atom containing an
-instance of `ont-app.igraph.graph/Graph, an lightweight, immutable
+instance of `ont-app.igraph.graph/Graph, a lightweight, immutable
 implementation of the IGraph protocol provided with ont-app/igraph.
 
 All the graph-log constructs except a set of macros dealing with log
@@ -376,7 +380,7 @@ render well as strings.
 <a name="h5-glog-annotate"></a>
 ##### `glog/annotate!`
 
-You can also use the `annotate!` function to add arbitrary triples to
+You can use the `annotate!` function to add arbitrary triples to
 `log-graph`:
 
 ```
@@ -491,7 +495,7 @@ nil
 ```
 
 <a name="Setting_warning_levels_of_entry_types"></a>
-##### Setting warning levels of entry types
+##### Setting logging levels of entry types
 
 The level-based logging macros described above (e.g. (debug ...) are
 conditioned on their associated levels, but we can override the
@@ -532,15 +536,17 @@ You can turn logging off by setting its level to `glog/OFF`
 >
 ```
 
+<a name="Utilities"></a>
+## Utilities
+
 <a name="Archiving"></a>
-#### Archiving
+#### Archiving (JVM version only)
 
 |KWI |Description |
-:--- |:---------- |
-|:glog/ArchiveFn |A function [g] -&gt; archive-path, with side-effect of saving the current log before resetting. Only invoked if :igraph/compiledAs is asserted with an executable function. |
-|:glog/archivePathFn |Asserts a function [g] -&gt; archive-path to which the current state of the log may be written before resetting. |
-|:glog/archiveDirectory |Asserts the directory portion of the archive-path used by archivePathFn. (only applicable if the local file system is used) |
-|:glog/continuingFrom |Asserts the archive-path of the log previously archived on the last reset. |
+| :--- | :---------- |
+| :glog/archivePathFn |Asserts a function [g] -&gt; archive-path to which the current state of the log may be written before resetting. |
+| :glog/archiveDirectory | Asserts the directory portion of the archive-path used by archivePathFn. (only applicable if the local file system is used) |
+| :glog/continuingFrom | Asserts the archive-path of the log previously archived on the last reset. |
 
 The contents of `glog/log-graph` are by default held in memory until
 the log is reset. 
@@ -550,32 +556,40 @@ being reset periodically, and in many cases we may want to preserve
 the history of such logs. The vocabulary listed above provides support
 for doing so.
 
-When properly configured, a call to `log-reset!` will write the
-contents of the graph in Normal Form (minus a few things described
-below) to a file, or any other medium you care to support in code.
+To enable archiving require the archiving module...
 
-Let's start with an example configuration:
 ```
-> (def archived-log 
+(ns ....
+   (:require 
+     ...
+     [ont-app.graph-log.archiving :as archive]
+     )
+  )
+```
+
+Every call to `archive/log-reset!` will behave exactly as
+glog/log-reset! does, but as a side-effect, it will asynchronously
+publish a representation of the transition between the old and new
+logs to a file. When the archiving operation is complete, this triple
+will be asserted:
+
+```
+> (@log-graph :glog/LogGraph `glog/continuingFrom`)
+/path/to/previous-log.edn
+```
+
+
+By default, each file will be named after the beginning and ending
+timestamps of its entries, and be written to the _/tmp_
+directory. Best practice would define a target directory:
+
+```
+> (def archivable-log 
     (add glog/ontology
-      [[:glog/ArchiveFn 
-        :igraph/compiledAs glog/save-to-archive
-       ]
-       [:glog/LogGraph 
+      [[:glog/LogGraph 
         :glog/archiveDirectory "/tmp/myAppLog"
         ]]))
 ```
-
-The first clause in the configuration asserts that the `ArchiveFn` is
-associated with a compiled executable function, thus enabling
-it. Graph-log provides the `save-to-archive` function (on the :clj
-platform only) to provide what is hoped to be good default behavior
-for this purpose.
-
-Any function provided for `ArchiveFn` must have the signature `[g] ->
-URL`, taking the the log graph as an argument, writing Normal Form to
-whatever medium makes sense, and returning an identifier of the
-resource in a form that will make it retrievable later, such as a URL.
 
 Asserting an `archiveDirectory` for the `LogGraph` will direct all log
 archive files to that directory. This is optional. The default is `/tmp`.
@@ -583,7 +597,7 @@ archive files to that directory. This is optional. The default is `/tmp`.
 With this configuration, the following call:
 
 ```
-> (glog/log-reset! archived-log)
+> (glog/log-reset! archivable-log)
 ```
 
 ... will establish a log with this configuration. Then another call
@@ -592,9 +606,8 @@ after adding an entry:
 ```
 > (info :my-log/Test-archiving)
 ...
-> (glog/log-reset!) 
+> (archive/log-reset! archivable-log) 
 ```
-
 
 ...will give you a fresh `log-graph`, with the following side-effects:
 
@@ -612,8 +625,8 @@ after adding an entry:
   `:glog/LogGraph :glog/continuingFrom
   "/tmp/myAppLog/1576yadda-1576yadda.edn"`.
 
-
 ```
+
 > (igraph/unique (@glog/log-graph :glog/LogGraph :glog/continuingFrom))
 "/tmp/myAppLog/1576yadda-1576yadda.edn"
 > (-> 
@@ -624,7 +637,8 @@ true
 >
 ```
 
-Having written the archive file, you can read the contents into any IGraph-compliant graph implementation thus:
+Having written the archive file, you can read the contents into any
+IGraph-compliant graph implementation thus:
 
 ```
 > (def restored-log-graph 
@@ -649,37 +663,29 @@ Having written the archive file, you can read the contents into any IGraph-compl
 ```
 
 In the example above, the file `/tmp/myAppLog/1576yadda-1576yadda.edn`
-was generated by the default function `glog/archive-path`, a function
+was generated by the default function `archive/archive-path`, a function
 `[log-graph] -> path`, which references the `archiveDirectory`
 property mentined above. It generates a canonical pathname for the
 current graph based on timestamps. You may override this with your own
 function with the same signature, asserting something like:
 
-
 ```
-> (def archived-log 
+> (def archivable-log 
     (add glog/ontology
-      [[:glog/ArchiveFn 
-        :igraph/compiledAs glog/save-to-archive
+      [[:glog/LogGraph 
+        :glob/archivePathFn :my-log/MyArchivePathFn
        ]
-      [:glog/LogGraph 
-       :glob/archivePathFn :my-log/MyArchivePathFn
-      ]
-      [:my-log/MyArchivePathFn 
-        :igraph/compiledAs my-ns/my-archive-path
-       ]]))
+       [:my-log/MyArchivePathFn 
+         :igraph/compiledAs my-ns/my-archive-path
+        ]]))
 ...
-> (glog/reset-graph! archived-log)
+> (archive/reset-graph! archivable-log)
 ```
 
 And of course then it would be up to you whether
 `my-ns/my-archive-path` availed itself of the
 `archiveDirectory` construct.
 
-You can also write your own functions to replace `glog/save-to-archive`.
-
-<a name="Utilities"></a>
-## Utilities
 
 <a name="Searching_forward_and_backward"></a>
 ### Searching forward and backward
@@ -818,7 +824,7 @@ In G2:
 <a name="License"></a>
 ## License
 
-Copyright © 2020 Eric D. Scott
+Copyright © 2020-21 Eric D. Scott
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
