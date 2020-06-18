@@ -7,7 +7,7 @@
                  [org.clojure/clojurescript "1.10.597"]
                  [org.clojure/spec.alpha "0.2.176"]
                  ;; 3rd party libraries
-                 [com.taoensso/timbre "4.11.0-alpha1"] ;; "4.10.0"] ;; basic logging
+                 [com.taoensso/timbre "4.11.0-alpha1"] ;; basic logging
                  [cljstache "2.0.5"]
                  [lein-doo "0.1.11"] ;; cljs testing
                  ;;

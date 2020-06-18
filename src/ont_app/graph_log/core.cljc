@@ -491,7 +491,11 @@ NOTE: typically this is used as a partial application over <test>
         i-or-entry (first q)
         i (if (number? i-or-entry)
             i-or-entry
-            (the (g i-or-entry :glog/executionOrder)))
+            (or (the (g i-or-entry :glog/executionOrder))
+                (throw (ex-info (str i-or-entry " does not have an execution order")
+                                {:type ::NoExecutionOrderInSearch
+                                 ::i-or-entry i-or-entry
+                                 ::g g}))))
         entry (if (number? i-or-entry)
                 (if (< -1 i-or-entry (count _entries))
                   (_entries i-or-entry)
