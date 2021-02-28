@@ -5,12 +5,15 @@
    #?(:clj [clojure.java.io :as io])
    [clojure.string :as str]
    [clojure.set :as set]
+   ;; 3rd party
+   [taoensso.timbre :as timbre]
+   ;; ont-app 
    [ont-app.igraph.core :as igraph
     :refer [add
             difference
             query
             ]]
-   [ont-app.igraph.graph :as g
+   [ont-app.igraph.graph :as native-normal
     :refer [make-graph
             ]]
     
@@ -21,20 +24,10 @@
             log-reset!
             log-value!
             ]]
-    #?(:clj [ont-app.graph-log.levels :refer :all])
-    )
-  #?(:cljs
-     (:require-macros
-       [ont-app.graph-log.levels
-              :refer [
-                      debug
-                      fatal
-                      info
-                      value-info
-                      ]]
-       ))
-  )
+   #?(:clj [ont-app.graph-log.levels :refer :all])
 
+   ) ;; :require
+)
 
 ;; EXAMPLES FROM README
 
@@ -42,7 +35,6 @@
     (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
     (println "Hello " whos-asking ", here's the answer...")
   (glog/log-value! :my-log/returning-get-the-answer 42))
-
 
 (deftest readme-examples
   (testing "Simple usage"
@@ -144,50 +136,9 @@
     
     (is (= (glog/entries)
            []))
-    (glog/log-reset!)
-    )
+    (glog/log-reset!))
   
-  #?(:clj
-     (testing "Archiving"
-       (glog/log-reset! (add glog/ontology
-                             [[:glog/ArchiveFn 
-                               :igraph/compiledAs glog/save-to-archive
-                               ]
-                              [:glog/LogGraph 
-                               :glog/archiveDirectory "/tmp/myAppLog"
-                               ]]))
-       (info :my-log/Test-archiving)
-       (glog/log-reset!)
-       (is (= (-> 
-               (clojure.java.io/as-file 
-                (igraph/unique
-                 (@glog/log-graph :glog/LogGraph :glog/continuingFrom)))
-               (.exists))
-              true))
-       (let [restored
-             (let [g (make-graph)] 
-               (igraph/read-from-file 
-                g 
-                (igraph/unique 
-                 (@glog/log-graph :glog/LogGraph :glog/continuingFrom))))
-             restored (igraph/subtract restored
-                                       [:my-log/Test-archiving_0 :glog/timestamp])
-             ]
-         (is (= (igraph/normal-form restored)
-                {:my-log/Test-archiving_0
-                 {:rdf/type #{:my-log/Test-archiving},
-                  :glog/executionOrder #{0}},
-                 :glog/LogGraph
-                 #:glog{:archiveDirectory #{"/tmp/myAppLog"},
-                        :entryCount #{1},
-                        :hasEntry #{:my-log/Test-archiving_0}},
-                 :my-log/Test-archiving
-                 {:rdfs/subClassOf #{:glog/Entry}}}))
-         (when (.exists (io/file "/tmp/myAppLog"))
-           (doseq [f (rest (file-seq (io/file "/tmp/myAppLog")))]
-             (io/delete-file f))
-           (io/delete-file (io/file "/tmp/myAppLog"))))
-       (glog/log-reset!)))
+
   
   (testing "Searching forward and backward"
     (glog/log-reset!)
@@ -199,8 +150,7 @@
               is-starting-get-the-answer? 
               :my-log/returning-get-the-answer_1)
              :my-log/starting-get-the-answer_0
-             ))
-      ))
+             ))))
   (testing "Comparing logs"
     (let [
           A (atom nil)
@@ -266,7 +216,7 @@
   (value-info ::test-value-info 42)
   (value-info ::test-value-info [::asdf "asdf"] 43))
 
-(deftest log-value-at-level
+#_(deftest log-value-at-level
   (testing "log-value-at-level"
     (glog/log-reset!)
     (test-log-value-at-level)
@@ -284,11 +234,10 @@
                ::asdf #{"asdf"}
                :glog/value #{43}}])))))
           
-(deftest standard-logging
+#_(deftest standard-logging
   (testing "std-logging-message"
     (is (= (glog/std-logging-message :glog/message "This is a number: {{number}}"
                                      :number 42)
            "This is a number: 42"))))
 
   
-
