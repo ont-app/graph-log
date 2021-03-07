@@ -1,4 +1,4 @@
-<img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/> # ont-app/graph-log
+# <img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/> ont-app/graph-log
 
 Code and a small ontology for logging to an
 [IGraph](https://github.com/ont-app/igraph) in clojure(script). It is
@@ -8,15 +8,14 @@ This this intended as a tool to be able to construct a graph of
 queryable, inter-related logging events which can serve as a basis for
 useful diagnostics.
 
-Standard logging is implemented with
-[timbre](https://github.com/ptaoussanis/timbre). Standard logging and
-graph-logging are independent except for the `message` construct
-decribed below.
+It integrates with standard, string-based logging implemented with
+[timbre](https://github.com/ptaoussanis/timbre).
 
 ## Contents
 - [Dependencies](#Dependencies)
 - [Simple usage](#Simple_usage)
-- [Standard logging](#h3-standard-logging)
+- [Logging-levels](#h4-simple-logging-levels)]
+- [Standard logging](#h4-standard-logging)
 - [More advanced usage](#More_advanced_usage)
   - [Configuring the `log-graph`](#Configuring_the_log-graph)
   - [Adminstration](#Adminstration)
@@ -24,9 +23,8 @@ decribed below.
   - [Logging levels](#h4-logging-levels)
     - [Setting logging levels of entry types](#Setting_warning_levels_of_entry_types)
     - [Setting the global log level](#Setting_the_global_log_level)
-
 - [Utilities](#Utilities)
-  - [Archiving](#Archiving)
+  - [Archiving](#h3-archiving)
   - [Searching forward and backward](#Searching_forward_and_backward)
   - [Comparing logs](#Comparing_logs)
 - [License](#License)
@@ -169,8 +167,8 @@ We can query `@log-graph` with `query-log`:
 ```
 
 This is the query format used by
-`[ont-app.igraph.graph/Graph](https://github.com/ont-app/igraph#Graph)`. It
-consists of a graph pattern expressed as a vector of triples, each
+[ont-app.igraph.graph/Graph](https://github.com/ont-app/igraph#Graph).
+It consists of a graph pattern expressed as a vector of triples, each
 elment of which is either a KWI, a literal value, or a :?variable. It
 returns a set of {:?variable `value`, ...} maps.
 
@@ -210,8 +208,8 @@ ad-hoc by the user, but hopefully it's clear that as your program
 starts to mature, certain entry classes can be given attributes that
 lend themselves as inputs to helpful diagnostic functions.
 
-<a name="h3-log-levels></a>
-### Log levels
+<a name="h3-simple-logging-levels"></a>
+#### Logging levels
 
 More commonly you'll probably want to attach logging statements to the usual logging levels. This can be done by swapping in say `info` or `value-info` expressions in place of `log!` and `log-value!` as follows:
 
@@ -231,8 +229,8 @@ More commonly you'll probably want to attach logging statements to the usual log
 
 See [the discussion below](#h4-logging-levels) for details.
 
-<a name="h3-standard-logging"></a>
-### Standard logging
+<a name="h4-standard-logging"></a>
+#### Standard logging
 
 |KWI |Description |
 :--- |:---------- |
@@ -256,17 +254,18 @@ logging message keyed to the INFO logging level. It will do this by
 calling `std-logging-message`, described below.
 
 
-#### `std-logging-message`
+##### `std-logging-message`
 
 The `std-logging-message` function expects a set of property/value
-pairs, one of whose properties is :glog/message, paired with a
+pairs, one of whose properties is _:glog/message_, paired with a
 mustache-type template string. It will generate a string based on said
 template, whose parameters should match other properies in the same
 call (minus :colons).
 
-This can be passed to standard logging functions. The taoensso.timbre
-a dependency of this library, so the following example will be logged
-if timbre/*config* is configured for :debug or lower:
+This can be passed to standard logging functions. The library
+_taoensso.timbre_ is a dependency of this library, so the following
+example will be logged if timbre/*config* is configured for :debug or
+lower:
 
 
 Example:
@@ -675,6 +674,8 @@ after adding an entry:
 - There will be an additional assertion in the new log-graph:
   `:glog/LogGraph :glog/continuingFrom
   "/tmp/myAppLog/1576yadda-1576yadda.edn"`.
+- There will be an assertion counting the number of resets:
+  `:glog/LogGraph :glog/iteration <one greater than the last iteration>`
 
 ```
 
