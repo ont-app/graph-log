@@ -372,9 +372,12 @@ Where
   <g> is a log-graph (default @log-graph)
   "
   ([entry-id]
-   (show @log-graph entry-id))
-  ([g entry-id]
-     (g entry-id)))
+   (igraph/get-p-o @log-graph entry-id))
+  ([entry-id p]
+   (igraph/get-o @log-graph entry-id p))
+  ([entry-id p o]
+   (igraph/ask @log-graph entry-id p o)))
+
 
 (defn query-log
   "Returns [<bmap>, ....] for `q` posed to optional `g`

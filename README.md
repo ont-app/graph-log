@@ -106,6 +106,11 @@ We can ask for a description of any element of the `log-graph` in
  :glog/executionOrder #{0},
  :my-log/whos-asking #{"Douglas"}}
 >
+> (glog/show :my-log/starting-get-the-answer_0 :glog/executionOrder)
+#{0}
+>
+> (glog/show :my-log/starting-get-the-answer_0 :glog/executionOrder 0)
+0 ;; truthy
 ```
 
 ... Or we can ask for a log entry by its _execution order_ ...
