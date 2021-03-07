@@ -13,7 +13,8 @@
 (defmacro apply-std-logging-fn-at-level
   [val level & args]
   `(let []
-     (if (and (glog/level>= ~level (:level timbre/*config*))
+     (if (and (:level timbre/*config*)
+              (glog/level>= ~level (:level timbre/*config*))
               (some (fn [x#] (= x# :glog/message)) (list ~@args)))
        ~(list (symbol "taoensso.timbre" (name level))
               `(apply glog/std-logging-message (list ~@args))))

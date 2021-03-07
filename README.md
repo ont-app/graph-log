@@ -14,7 +14,7 @@ It integrates with standard, string-based logging implemented with
 ## Contents
 - [Dependencies](#Dependencies)
 - [Simple usage](#Simple_usage)
-  - [Logging-levels](#h4-simple-logging-levels)]
+  - [Logging-levels](#h4-simple-logging-levels)
   - [Standard logging](#h4-standard-logging)
 - [More advanced usage](#More_advanced_usage)
   - [Configuring the `log-graph`](#Configuring_the_log-graph)
