@@ -14,8 +14,8 @@ It integrates with standard, string-based logging implemented with
 ## Contents
 - [Dependencies](#Dependencies)
 - [Simple usage](#Simple_usage)
-- [Logging-levels](#h4-simple-logging-levels)]
-- [Standard logging](#h4-standard-logging)
+  - [Logging-levels](#h4-simple-logging-levels)]
+  - [Standard logging](#h4-standard-logging)
 - [More advanced usage](#More_advanced_usage)
   - [Configuring the `log-graph`](#Configuring_the_log-graph)
   - [Adminstration](#Adminstration)
@@ -208,7 +208,7 @@ ad-hoc by the user, but hopefully it's clear that as your program
 starts to mature, certain entry classes can be given attributes that
 lend themselves as inputs to helpful diagnostic functions.
 
-<a name="h3-simple-logging-levels"></a>
+<a name="h4-simple-logging-levels"></a>
 #### Logging levels
 
 More commonly you'll probably want to attach logging statements to the usual logging levels. This can be done by swapping in say `info` or `value-info` expressions in place of `log!` and `log-value!` as follows:
