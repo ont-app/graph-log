@@ -99,18 +99,17 @@
     @status
     )))
 
-
+^{:vocabulary [:glog/LogGraph
+               :glog/archivePathFn
+               :igraph/compiledAs
+               :glog/timestamp
+               :glog/archiveDirectory]}
 (defn archive-path 
   "Returns a canonical name for an archive file for a log
-Where
-<g> is a log-graph
-
-Vocabulary:
-:glog/archiveDirectory -- asserts the name of the directory to which logs
-  should be archived.
-  Defaults to '/tmp'"
+  Where
+  - <g> is a log-graph, Typically `glog:LogGraph`
+  "
   [g]
-  
   (if-let [archive-path-fn (the (g :glog/LogGraph (t-comp [:glog/archivePathFn
                                                            :igraph/compiledAs])))
            ]
@@ -130,6 +129,8 @@ Vocabulary:
         :stop (date-string (count es))
         }))))
 
+^{:vocabulary [:igraph/compiledAs
+               ]}
 (defn save-to-archive 
      "Side-effect: Writes contents of `g` to `archive-path`, after removing stuff that would choke a reader.
 Returns `archive-path` for `g`
@@ -163,7 +164,6 @@ Where:
                   }
   - `catalog-card` := {::topic ::catalog
                        ::volume `archive-file`,
-                       ::previous-topic ::LogReset
                        ...}, merged with `article`.
   - `old-graph` is the previous contents of a log-graph
   - `new-graph` is the newly reset log-graph
@@ -181,12 +181,14 @@ Where:
                       (catch Throwable e
                         e))]
       (go (>! file-archived>>set-continuing-from
+              ;; the catalog card...
               (merge article
                      {::topic ::catalog
                       ::volume result
                       }))))))
    
-
+^{:vocabulary [:glog/LogGraph,
+               :glog/continuingFrom]}
 (defn set-continuing-from 
   "Side-effect: establishes :glog/coninuingFrom value per `catalog-card` in `gatom`
 Where
@@ -209,6 +211,12 @@ Where
                         ::card catalog-card}))))))
 
 (def check-archiving-timeout (atom 1000))
+
+^{:vocabulary [:glog/LogGraph
+               :glog/iteration
+               :glog/FreshArchive
+               :glog/continuingFrom
+               :rdf/type]}
 (defn check-archiving 
   "Side-effect: sets the :glog/continuingFrom relation in `gatom`
   Where
@@ -224,16 +232,23 @@ Where
   ([ms]
    (check-archiving log-graph ms))
   ([gatom ms]
-   (when (archiving? @gatom)
-     (let [result (wait-for (fn []
-                              (Thread/sleep 10)
-                              (@gatom :glog/LogGraph :glog/continuingFrom))
-                            ms)]
-       (when(= result ::timeout)
-         (swap! gatom assert-unique :glog/LogGraph :rdf/type :glog/FreshArchive))))))
+   (let [iteration (or (the (@gatom :glog/LogGraph :glog/iteration))
+                       0)
+         ]
+     (when (archiving? @gatom)
+       (if (= iteration 0)
+         (swap! gatom assert-unique :glog/LogGraph :rdf/type :glog/FreshArchive)
+         ;; else continuing...
+         (let [result (wait-for (fn []
+                                  (Thread/sleep 10)
+                                  (@gatom :glog/LogGraph :glog/continuingFrom))
+                                ms)]
+           (when(= result ::timeout)
+             (swap! gatom assert-unique :glog/LogGraph :rdf/type :glog/FreshArchive))))))))
 
 
-
+^{:vocabulary [:glog/LogGraph
+               :glog/iteration]}
 (defn log-reset!
   "Side-effect: resets @log-graph to `initial-graph`
   Side-effect: if (initial-graph:glog/SaveToFn igraph/compiledAs <path-fn>),
@@ -250,11 +265,18 @@ Where
    ;; submit the transition state to the archiver channel...
    (when (not (= @log-graph new-graph))
      (let [old-graph @log-graph
+           new-graph (assert-unique new-graph
+                                    :glog/LogGraph
+                                    :glog/iteration
+                                    (inc (or (the (old-graph
+                                                   :glog/LogGraph
+                                                   :glog/iteration))
+                                             0)))
            ]
-     (go (>! log-reset>>archive-to-file
+       (go (>! log-reset>>archive-to-file
              {::topic ::LogReset
               ::old-graph old-graph
               ::new-graph new-graph
-            }))))
-   (glog/log-reset! new-graph)))
+              }))
+       (glog/log-reset! new-graph)))))
 

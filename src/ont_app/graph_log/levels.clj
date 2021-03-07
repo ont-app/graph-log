@@ -8,6 +8,8 @@
    ))
 
 
+^{:vocabulary [:glog/message
+               ]}
 (defmacro apply-std-logging-fn-at-level
   [val level & args]
   `(let []
@@ -17,6 +19,10 @@
               `(apply glog/std-logging-message (list ~@args))))
      ~val))
 
+^{:vocabulary [:glog/LogGraph
+               :glog/level
+               :glog/OFF
+               ]}
 (defmacro apply-log-fn-at-level
   "Returns value of  `log-fn` on `entry-type` and `args` as appropriate for `level`, else return `default`
   Where
@@ -45,31 +51,43 @@
 
 ;; log! per debug level
 
+^{:vocabulary [:glog/TRACE
+               ]}
 (defmacro trace [entry-type & args]
   `(let []
      (apply-std-logging-fn-at-level nil :trace ~@args)
      (apply-log-fn-at-level nil glog/log! :glog/TRACE ~entry-type ~@args)))
 
+^{:vocabulary [:glog/DEBUG
+               ]}
 (defmacro debug [entry-type & args]
   `(let []
      (apply-std-logging-fn-at-level nil :debug ~@args)
      (apply-log-fn-at-level nil glog/log! :glog/DEBUG ~entry-type ~@args)))
 
+^{:vocabulary [:glog/INFO
+               ]}
 (defmacro info [entry-type & args]
   `(let []
      (apply-std-logging-fn-at-level nil :info ~@args)
      (apply-log-fn-at-level nil glog/log! :glog/INFO ~entry-type ~@args)))
 
+^{:vocabulary [:glog/TRACE
+               ]}
 (defmacro warn [entry-type & args]
   `(let []
      (apply-std-logging-fn-at-level nil :warn ~@args)
      (apply-log-fn-at-level nil glog/log! :glog/WARN ~entry-type ~@args)))
 
+^{:vocabulary [:glog/ERROR
+               ]}
 (defmacro error [entry-type & args]
   `(let []
      (apply-std-logging-fn-at-level nil :error ~@args)
      (apply-log-fn-at-level nil glog/log! :glog/ERROR ~entry-type ~@args)))
 
+^{:vocabulary [:glog/FATAL
+               ]}
 (defmacro fatal [entry-type & args]
   `(let []
      (apply-std-logging-fn-at-level nil :fatal ~@args)
@@ -78,6 +96,9 @@
 
 ;; log-value! per log level
 
+^{:vocabulary [:glog/value
+               :glog/TRACE
+               ]}
 (defmacro value-trace
   ([entry-type val]
    `(value-trace ~entry-type [] ~val))
@@ -89,6 +110,9 @@
        (apply-log-fn-at-level
         ~val  glog/log-value! :glog/TRACE ~entry-type ~extras ~val)))))
 
+^{:vocabulary [:glog/value
+               :glog/INFO
+               ]}
 (defmacro value-info
   ([entry-type val]
    `(value-info ~entry-type [] ~val))
@@ -101,7 +125,9 @@
         (apply-log-fn-at-level
          ~val  glog/log-value! :glog/INFO ~entry-type ~extras ~val)))))
 
-
+^{:vocabulary [:glog/value
+               :glog/DEBUG
+               ]}
 (defmacro value-debug
   ([entry-type val]
    `(value-debug  ~entry-type [] ~val))
@@ -113,7 +139,9 @@
         (apply-log-fn-at-level
          ~val  glog/log-value! :glog/DEBUG ~entry-type ~extras ~val)))))
 
-
+^{:vocabulary [:glog/value
+               :glog/TRACE
+               ]}
 (defmacro value-warn
   ([entry-type val]
    `(value-warn ~entry-type [] ~val))
@@ -125,7 +153,9 @@
        (apply-log-fn-at-level
         ~val  glog/log-value! :glog/WARN ~entry-type ~extras ~val)))))
 
-
+^{:vocabulary [:glog/value
+               :glog/ERROR
+               ]}
 (defmacro value-error
   ([entry-type val]
    `(value-error ~entry-type [] ~val))
@@ -137,7 +167,9 @@
         (apply-log-fn-at-level
          ~val  glog/log-value! :glog/ERROR ~entry-type ~extras ~val)))))
 
-
+^{:vocabulary [:glog/value
+               :glog/FATAL
+               ]}
 (defmacro value-fatal
   ([entry-type val]
    `(value-fatal ~entry-type [] ~val))

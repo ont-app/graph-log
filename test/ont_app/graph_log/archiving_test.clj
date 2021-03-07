@@ -38,6 +38,7 @@
     :test #{1}}}
   )
 
+#_(def expected-restored-graph nil)
 (deftest archiving
   (glog/log-reset! fresh-graph)
   ;; establishes the archive directory
@@ -71,6 +72,26 @@
                (igraph/normal-form (glog/remove-variant-values restored))
                )))))
 
+  ;; clean up myAppLog directory.....
+  (when (.exists (io/file "/tmp/myAppLog"))
+    (doseq [f (rest (file-seq (io/file "/tmp/myAppLog")))]
+      (io/delete-file f))
+    (io/delete-file (io/file "/tmp/myAppLog"))))
+
+(deftest increment-iterations
+  (glog/log-reset! fresh-graph)
+  ;; establishes the archive directory
+  (glog/log! ::testing :test 1)
+  (time (archive/log-reset! fresh-graph))
+  (glog/log! ::testing :test 2)
+  (time (archive/log-reset! fresh-graph))
+  ;; this will archive to spec'd directory
+  ;; first reset will time out in check-archiving
+  (time (archive/wait-for (fn []
+                            (@glog/log-graph :glog/LogGraph :glog/continuingFrom))
+                          100))
+  (is (= 2
+         (igraph/unique (@glog/log-graph :glog/LogGraph :glog/iteration))))
   ;; clean up myAppLog directory.....
   (when (.exists (io/file "/tmp/myAppLog"))
     (doseq [f (rest (file-seq (io/file "/tmp/myAppLog")))]

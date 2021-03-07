@@ -79,6 +79,7 @@ the contents of the graph.
        :rdf/type :igraph/Graph
        :rdfs/comment "The URI of igraph.graph-log.core/log-graph"
        ]
+
       [:glog/entryCount
        :rdfs/domain :graph/Graph
        :rdfs/range :xsd/NonNegativeInteger
@@ -136,14 +137,6 @@ the contents of the graph.
        :glog/priority 7
        :rdfs/comment "Signals that the log should not record events."
        ]
-      [:glog/iteration
-       :rdf/type :rdf/Property
-       :rdfs/domain :glog/Entry
-       :rdfs/range :xsd/nonNegativeInteger
-       :rdfs/comment "
-Optional. Asserts the number of times this log has been reset. When non-nil this will inform the KWI of each entry."
-       ]
-      
       [:glog/executionOrder
        :rdf/type :rdf/Property
        :rdfs/domain :glog/Entry
@@ -177,6 +170,19 @@ applied to its value to resolve template {{parameters}}.
 "
        ]
       ;; ARCHIVING THE LOG GRAPH ON RESET
+      [:glog/FreshArchive
+       :rdf/type :rdfs/Class
+       :rdfs/comment "
+An archived log which is the first of its lineage. Implied glog/iteration is 0. Not continuingFrom anything.
+"
+       ]
+      [:glog/iteration
+       :rdf/type :rdf/Property
+       :rdfs/domain :glog/Entry
+       :rdfs/range :xsd/nonNegativeInteger
+       :rdfs/comment "
+Optional. Asserts the number of times this log has been reset. When non-nil this will inform the KWI of each entry."
+       ]
       [:glog/archivePathFn
        :rdfs/domain :igraph/Graph
        :rdfs/comment "Asserts a function [g] -> archive-path to which

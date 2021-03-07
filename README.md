@@ -1,4 +1,4 @@
-<img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/># ont-app/graph-log
+<img src="http://ericdscott.com/NaturalLexiconLogo.png" alt="NaturalLexicon logo" :width=100 height=100/> # ont-app/graph-log
 
 Code and a small ontology for logging to an
 [IGraph](https://github.com/ont-app/igraph) in clojure(script). It is
@@ -43,12 +43,15 @@ Cljdoc.org hosts [documentation](https://cljdoc.org/d/ont-app/graph-log/0.1.1).
 ```
 (ns ....
  (:require 
-   [ont-app.igraph.core :as igraph]        ;; The IGraph protocol
-   [ont-app.igraph.graph :as graph]        ;; Default implementation of IGraph
-   [ont-app.graph-log.core :as glog]       ;; the graph-log library
-   [ont-app.graph-log.levels :refer :all]  ;; log level macros
-   [taoensso.timbre :as timbre]            ;; standard logging clj/cljs
+   [ont-app.igraph.core :as igraph]          ;; The IGraph protocol
+   [ont-app.igraph.graph :as graph]          ;; Default implementation of IGraph
+   [ont-app.graph-log.core :as glog]         ;; the graph-log library
+   [ont-app.graph-log.levels :refer :all]    ;; log level macros
+   [taoensso.timbre :as timbre]              ;; standard logging clj/cljs
    ...
+   ;; ...optionally ...
+   [ont-app.graph-log.archiving :as archive]  ;; asynchronous archiving
+
    ))
 ```
 
@@ -68,6 +71,7 @@ This will instantiate a graph globally declared as `@glog/log-graph`,
 populated with the basic vocabulary that informs the graph-logging
 process.
 
+The minimal logging operation uses `glog/log!` and glog/log-value!:
 
 ```
 > (defn get-the-answer [whos-asking]
@@ -120,12 +124,19 @@ We can ask for a description of any element of the `log-graph` in
 ... note that it returns a vector [_entry-id_ _entry-description_],
 and that the description is again in Normal Form.
 
-The values in this description are keyed to a vocabulary in an
-[ontology](https://www.wikidata.org/wiki/Q324254) dedicated to `graph-log`. This ontology is defined as an
-[ont-app.igraph.graph/Graph](https://github.com/ont-app/igraph/blob/master/src/ont_app/igraph/graph.cljc) in the file [ont.cljc](https://github.com/ont-app/graph-log/blob/master/src/ont_app/graph_log/ont.cljc).
+The elements in this graph are made up largely by `keyword
+identifiers` ([KWIs](https://github.com/ont-app/vocabulary#defining-keyword-identifiers-kwis-mapped-to-uri-namespaces)), which are namespaced Clojure keywords serving as
+[URI](https://www.wikidata.org/wiki/Q61694)s. For purposes of this
+discussion "KWI" and "URI" will be used interchangeably.
 
-This ontology is made up largely by `keyword identifiers` (KWIs), which
-are namespaced Clojure keywords serving as [URI](https://www.wikidata.org/wiki/Q61694)s. For purposes of this discussion "KWI" and "URI" will be used interchangeably.
+
+KWIs in turn are mappable to an
+[ontology](https://www.wikidata.org/wiki/Q324254) dedicated to
+describing the various entities and relationships in play. This
+ontology is defined as an
+[ont-app.igraph.graph/Graph](https://github.com/ont-app/igraph/blob/master/src/ont_app/igraph/graph.cljc)
+in the file
+[ont.cljc](https://github.com/ont-app/graph-log/blob/master/src/ont_app/graph_log/ont.cljc).
 
 Let's break out the KWIs in the example
 
@@ -138,7 +149,7 @@ Let's break out the KWIs in the example
 |:glog/timestamp |The timestamp in [milliseconds](https://en.wikipedia.org/wiki/Unix_time) associated with the entry |
 |:glog/executionOrder| Asserts that this is the ith entry in the `log-graph`|
 |:my-log/whos-asking |a property coined _ad hoc_ for the _starting-get-the-answer_ entry type.|
-|:glog/value |the value returned by the expression being traced by any call to glog/log-value!|
+|:glog/value |the value returned by the expression being traced by any call to _glog/log-value!_|
 
 
 We can query `@log-graph` with `query-log`:
@@ -194,21 +205,53 @@ ad-hoc by the user, but hopefully it's clear that as your program
 starts to mature, certain entry classes can be given attributes that
 lend themselves as inputs to helpful diagnostic functions.
 
+<a name="h3-log-levels></a>
+### Log levels
+
+More commonly you'll probably want to attach logging statements to the usual logging levels. This can be done by swapping in say `info` or `value-info` expressions in place of `log!` and `log-value!` as follows:
+
+```
+(ns ...
+  (:require
+   ...
+   [ont-app.graph-log.levels :refer :all]    ;; log level macros
+   ...))
+   
+(defn get-the-answer [whos-asking]
+    (info :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
+    (println "Hello " whos-asking ", here's the answer...")
+    (value-info :my-log/returning-get-the-answer 42))
+
+```
+
+See [the discussion below](#h4-logging-levels) for details.
+
 <a name="h3-standard-logging"></a>
 ### Standard logging
 
-Standard logging is done with
+|KWI |Description |
+:--- |:---------- |
+|:glog/message | A string or Mustache-type template to print to the standard logging stream via `taesano.timbre`. The flattened description of the entry will be applied to its value to resolve template {{parameters}}. |
+
+Standard, string-based logging is done with
 [timbre](https://github.com/ptaoussanis/timbre), which should be
 configured directly using its API.
 
-There is however one utility:
+Typically these are integrated into the levels macros
+
+```
+> (info :my-log/starting-get-the-answer
+    :my-log/whos-asking whos-asking
+    :glog/message "{{{my-log/whos-asking}} is asking for the answer."
+    )
+```
+
+In this example the `info` macro will generate a standard string-based
+logging message keyed to the INFO logging level. It will do this by
+calling `std-logging-message`, described below.
+
 
 #### `std-logging-message`
-
-|KWI |Description |
-:--- |:---------- |
-|:glog/message | A string or Mustache-type template to print to the standard logging stream via `taesano.timbre`. The flattened description of the entry will be applied to its value to resolve template {{parameters}}.
-
 
 The `std-logging-message` function expects a set of property/value
 pairs, one of whose properties is :glog/message, paired with a
@@ -219,6 +262,7 @@ call (minus :colons).
 This can be passed to standard logging functions. The taoensso.timbre
 a dependency of this library, so the following example will be logged
 if timbre/*config* is configured for :debug or lower:
+
 
 Example:
 ```
@@ -231,7 +275,6 @@ Example:
 
 Standard logging and graph-logging can function independently, but are brought together under the common umbrella of the [levels macros](#h4-logging-levels).
 
-See also the :glog/message vocabulary discussed [below](#h5-glog-message).
 
 <a name="More_advanced_usage"></a>
 ### More advanced usage
@@ -241,15 +284,15 @@ See also the :glog/message vocabulary discussed [below](#h5-glog-message).
 
 The graph can be reset
 ```
-> (log-reset! _initial-graph_) -> _initial-graph_
+> (log-reset! <initial-graph>) -> <initial-graph>
 ```
 
 This will replace any previous contents of @log-graph with
-_initial-graph_. There is also an archiving utility (discussed below)
-which can save the previous contents of @log-graph ansynchronously.
+_initial-graph_. There is also an archiving utility ([discussed
+below](#h3-archiving)) which can save the previous contents of
+@log-graph ansynchronously.
 
-The default initial graph is
-`ont-app.graph-log.core/ontology`
+The default initial graph is `ont-app.graph-log.core/ontology`.
 
 ```
 > (log-reset!) 
@@ -259,18 +302,22 @@ The default initial graph is
 
 The `ont-app.igraph.graph/Graph` data structure is immutable. The
 graph `ont-app.graph-log.core/log-graph` is an atom containing an
-instance of `ont-app.igraph.graph/Graph, a lightweight, immutable
-implementation of the IGraph protocol provided with ont-app/igraph.
+instance of
+[ont-app.igraph.graph/Graph](https://github.com/ont-app/igraph#Graph),
+a lightweight, immutable implementation of the IGraph protocol
+provided with _ont-app/igraph_.
 
-All the graph-log constructs except a set of macros dealing with log
-levels are kept in the `glog` namespace.  However, much of it is
-aligned to namesakes in [an existing public vocabulary called
+All the graph-log KWI constructs are kept in the `glog` namespace.
+However, much of it is aligned to namesakes in [an existing public
+vocabulary called
 rlog](https://persistence.uni-leipzig.org/nlp2rdf/ontologies/rlog/rlog.html
 "rlog") (See
 [here](https://github.com/NLP2RDF/ontologies/blob/master/rlog/rlog.ttl)
 for the Turtle definition).
 
-Since the log-graph implements IGraph, we can get the entire contents of the log in Normal Form by invoking it as a function without arguments:
+Since the log-graph implements IGraph, we can get the entire contents
+of the log in Normal Form by invoking it as a function without
+arguments:
 
 ```
 > (@glog/log-graph)
@@ -297,7 +344,7 @@ Let's break out the supporting ontology by category.
 
 |KWI |Description |
 :--- |:---------- |
-|:glog/LogGraph |The URI of igraph.graph-log.core/log-graph |
+|:glog/LogGraph |The KWI of igraph.graph-log.core/log-graph |
 |:glog/entryCount |Asserts the number of log entries in this graph. |
 
 The log-graph itself is identified by the KWI `:glog/LogGraph`. 
@@ -359,7 +406,6 @@ traditional logging stream. It supports {{mustache}} templating:
 
 <a name="h5-glog-informs-uri"></a>
 ##### `:glog/InformsUri`
-
 
 Declaring your property to be of type `InformsUri` creates more
 expressive entry names:
@@ -464,15 +510,13 @@ level, with the exception described in the next section.
 
 There are of course corresponding macros for all the other log levels.
 
-##### Standard logging per level
+
+##### Logging levels and standard logging
 
 Each of these macros also makes calls to standard logging functions in
 cases where:
 - timbre is configured to be senstive to the operative debug level 
 - the entry has a _:glog/message_ clause.
-
-
-##### Logging levels and standard logging
 
 In cases where the logging statment includes a `:glog/message` clause,
 the logging levels also inform standard messages, keyed to the value of
@@ -539,14 +583,16 @@ You can turn logging off by setting its level to `glog/OFF`
 <a name="Utilities"></a>
 ## Utilities
 
-<a name="Archiving"></a>
-#### Archiving (JVM version only)
+<a name="#h3-archiving"></a>
+### Archiving (JVM version only)
 
 |KWI |Description |
 | :--- | :---------- |
 | :glog/archivePathFn |Asserts a function [g] -&gt; archive-path to which the current state of the log may be written before resetting. |
 | :glog/archiveDirectory | Asserts the directory portion of the archive-path used by archivePathFn. (only applicable if the local file system is used) |
 | :glog/continuingFrom | Asserts the archive-path of the log previously archived on the last reset. |
+| :glog/iteration | Asserts the number of times the log in this lineage has been reset. |
+| :glog/FreshArchive | the class of archived logs which are the first in its lineage. |
 
 The contents of `glog/log-graph` are by default held in memory until
 the log is reset. 

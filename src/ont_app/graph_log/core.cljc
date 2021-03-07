@@ -53,6 +53,8 @@
   "Caches level priorities, to inform `level>=`"
   (atom nil))
 
+^{:vocabulary [:glog/priority
+               ]}
 (defn level>=
   "Returns true iff `this-level` has priority >= `that-level`
   Where
@@ -98,7 +100,11 @@
   #?(:cljs
      (system-time)))
 
-
+^{:vocabulary [:glog/LogGraph
+               :glog/archiveDirectory
+               :glog/archivePathFn
+               :igraph/compiledAs
+               ]}
 (defn archiving? 
   "True iff archiving is enabled for `g`
   Where:
@@ -108,8 +114,8 @@
    (archiving? @log-graph))
   ([g]
    ;; TODO: generalize this as other options come into play.
-   (g :glog/LogGraph :glog/archiveDirectory)))
-
+   (or (g :glog/LogGraph :glog/archiveDirectory)
+       (g :glog/LogGraph (t-comp [:glog/archivePathFn :igraph/compiledAs])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -127,7 +133,9 @@
    (log-reset! ontology))
   ([initial-graph]
    (reset! log-graph initial-graph)))
-   
+
+^{:vocabulary [:glog/level
+               ]}
 (defn set-level! 
   "Side-effect, adds `args` to entry for `element` in log-graph
 Where
@@ -155,12 +163,17 @@ Where
 ;; SUPPORT FOR ENTERING TO LOG
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+^{:vocabulary [:glog/LogGraph
+               :glog/entryCount
+               ]}
 (defn entry-count
   "Returns the number of entries in `g` (default @log-graph)"
   ([] (entry-count @log-graph))
   ([g] (or (the (g :glog/LogGraph :glog/entryCount))
            0)))
 
+^{:vocabulary [:glog/message
+               ]}
 (defn std-logging-message 
   "Returns: a string suitable for standard logging based on `args`, or nil
   if there is no :glog/message specification.
@@ -192,6 +205,16 @@ Where
                            messages)))))
 
 
+^{:vocabulary [:rdf/type
+               :rdfs/subClassOf
+               :glog/InformsUri
+               :glog/Entry
+               :glog/LogGraph
+               :glog/entryCount
+               :glog/timestamp
+               :glog/executionOrder
+               :glog/hasEntry
+               ]}
 (defn log! 
   "Side-effect: adds an entry to log-graph for <id> minted per `entry-type` and `args`
   Returns: <id> or nil (if no entry was made)
@@ -240,8 +263,8 @@ Where
                                (reduce collect-if-informs-uri
                                        (vec (filter some?
                                                     [entry-type
-                                                     ;; todo document :iteration
-                                                     (the (g :glog/LogGraph
+                                                     ;; still making up my mind
+                                                     #_(the (g :glog/LogGraph
                                                              :glog/iteration))
                                                      execution-order]))
                                        (partition 2 args))))
@@ -264,6 +287,8 @@ Where
         @id-atom
         ))))
 
+^{:vocabulary [:glog/value
+               ]}
 (defn log-value!
   "Returns `value`
   Side effect: logs <id> :glog/value `value`, plus `other-args` into log-graph
@@ -293,6 +318,11 @@ Where
 ;; SUPPORT FOR VIEWING LOG CONTENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+^{:vocabulary [:glog/executionOrder
+               :rdf/type
+               :glog/LogGraph
+               :glog/hasEntry
+               ]}
 (defn entries
   "Returns [<entry-id>, ...] for `entry-type` in `g` ordered by :glog/executionOrder
   Where
@@ -359,6 +389,8 @@ Where
    (query g q)))
 
 ;; traversal function
+^{vocabulary [:glog/executionOrder
+              ]}
 (defn search 
   "Returns [c found [previous-index]] for `entry-test` of <i>th  entry per `q` and inc-or-dec
   See also the IGraph docs for traversal functions.
@@ -454,6 +486,10 @@ NOTE: typically this is used as a partial application over <test>
 ;; change in your code and compare the results
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+^{:vocabulary [:glog/timestamp
+               :glog/LogGraph
+               :glog/hasEntry
+               ]}
 (defn remove-timestamps 
   "Spurious difference between two logs"
   ([]
@@ -584,6 +620,6 @@ Where
     (pp/pprint (igraph/normal-form d2))
     [d1 d2]))
 
-(defn -main [& _] )
+;;(defn -main [& _] )
 
 
