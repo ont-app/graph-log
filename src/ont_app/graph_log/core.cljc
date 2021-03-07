@@ -31,7 +31,7 @@
     :refer [make-graph
             ]]))
 
-(voc/cljc-put-ns-meta!
+(voc/put-ns-meta!
  'ont-app.graph-log.core
  {
   :voc/mapsTo 'ont-app.graph-log.ont
@@ -64,7 +64,7 @@
   [this-level that-level]
   {:pre [(keyword? this-level)
          (keyword? that-level)]
-   :post [#(boolean? %)]
+   :post [(boolean? %)]
    }
   (when (not @level-priorities)
     ;; populate the level-priorities cache

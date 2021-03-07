@@ -7,7 +7,7 @@
    )
   )
 
-(voc/cljc-put-ns-meta!
+(voc/put-ns-meta!
  'ont-app.graph-log.rlog
  {
   :vann/preferredNamespacePrefix "rlog"
@@ -26,7 +26,7 @@
 
 ;; TODO import the RLOG source
 
-(voc/cljc-put-ns-meta!
+(voc/put-ns-meta!
  'ont-app.graph-log.ont
  {
   :vann/preferredNamespacePrefix "glog"

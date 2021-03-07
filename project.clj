@@ -57,6 +57,7 @@
      ["resources/public/js/compiled"
      "resources/test"
      :target-path
-     ]  
+      ]
+  :eastwood {:exclude-linters [:unused-meta-on-macro]}
   )
        

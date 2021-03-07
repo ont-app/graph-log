@@ -25,6 +25,10 @@
             log-value!
             ]]
    #?(:clj [ont-app.graph-log.levels :refer :all])
+   #?(:cljs [ont-app.graph-log.levels :refer-macros [debug
+                                                     fatal
+                                                     value-info
+                                                     ]])
 
    ) ;; :require
 )

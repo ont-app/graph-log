@@ -82,10 +82,10 @@
   - `test` := fn [] -> truthy value
   - `ms` is max time to wait for `test` to be truthy
   "
-  ([test ms]
+  ([_test ms]
    (let [status (atom nil)
          listen (go-loop []
-                  (let [test-result (test)]
+                  (let [test-result (_test)]
                     (if test-result
                       test-result
                       (do
