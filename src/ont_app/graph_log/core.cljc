@@ -139,8 +139,8 @@
 (defn set-level! 
   "Side-effect, adds `args` to entry for `element` in log-graph
 Where
-<args> := [<predicate> <object>, ...]
-<element> is an element of the log-graph
+  - `args` := [`predicate` `object`, ...]
+  - `element` is an element of the log-graph
 "
   [element level]
   (swap! log-graph assert-unique element :glog/level level))
@@ -148,8 +148,8 @@ Where
 (defn annotate! 
   "Side-effect, adds `args` to entry for `element` in log-graph
 Where
-<args> := [<predicate> <object>, ...]
-<element> is an element of the log-graph
+  - `args` := [`predicate` `object`, ...]
+  - `element` is an element of the log-graph
 "
   [element & args]
   (when-not (subjects @log-graph)
@@ -178,13 +178,13 @@ Where
   "Returns: a string suitable for standard logging based on `args`, or nil
   if there is no :glog/message specification.
 Where
-<args> := {<p> <o>, ....}
-<p> is a keyword naming a property, possibly :glog/message
-<o> is a value, known as <template> if <p> = :glog/message
-<template> is a mustache-style template to which <desc-map> will be applied
+  - `args` := {`p` `o`, ....}
+  - `p` is a keyword naming a property, possibly :glog/message
+  - `o` is a value, known as `template` if `p` = :glog/message
+  - `template` is a mustache-style template to which `desc-map` will be applied
   Of the form `yadda {{<p>}} yadda...'
-<desc-map> := {<p> <o>, ...}, minus any :glog/message. Specifying <o>'s to be 
-  inserted into <template>.
+  - `desc-map` := {`p` `o`, ...}, minus any :glog/message. Specifying `o`'s to be 
+  inserted into `template`.
 "
   [& args]
   {:pre [(even? (count args))]
@@ -216,13 +216,13 @@ Where
                :glog/hasEntry
                ]}
 (defn log! 
-  "Side-effect: adds an entry to log-graph for <id> minted per `entry-type` and `args`
-  Returns: <id> or nil (if no entry was made)
+  "Side-effect: adds an entry to log-graph for `id` minted per `entry-type` and `args`
+  Returns: `id` or nil (if no entry was made)
   Where
-  <id> is a KWI minted for <entry-type> and whatever <arg-kwi>s are of 
+  - `id` is a KWI minted for `entry-type` and whatever `arg-kwi`s are of 
   :rdf/type :glog/InformsUri in @log-graph.
-  <entry-type> is a KWI
-  <args> := [<arg-kwi> <value>, ...]
+  - `entry-type` is a KWI
+  - `args` := [`arg-kwi` `value`, ...]
   Note: Any issues relating to log levels should be handled before calling this
   function.
   "
@@ -293,12 +293,12 @@ Where
   "Returns `value`
   Side effect: logs <id> :glog/value `value`, plus `other-args` into log-graph
   Where
-  <entry-type> is a keyword naming the type of <entry>
-  <value> is the value being logged before it's returned.
-  <other-args> := [<p> <o>, ...]
-  <entry> is an entry in @glog/log-graph
-  <p> is a keyword naming a property of <entry>
-  <o> is a value asserted for <p> s.t. [<entry> <p> <o>] in the log.
+  - `entry-type` is a keyword naming the type of `entry`
+  - `value` is the value being logged before it's returned.
+  - `other-args` := [`p` `o`, ...]
+  - `entry` is an entry in @glog/log-graph
+  - `p` is a keyword naming a property of `entry`
+  - `o` is a value asserted for `p` s.t. [`entry` `p` `o`] in the log.
   "
   ([entry-type value]
    (log-value! entry-type [] value)
@@ -324,13 +324,13 @@ Where
                :glog/hasEntry
                ]}
 (defn entries
-  "Returns [<entry-id>, ...] for `entry-type` in `g` ordered by :glog/executionOrder
+  "Returns [`entry-id`, ...] for `entry-type` in `g` ordered by :glog/executionOrder
   Where
-  <entry-id> is a KWI identifying a log event in <g>
-  <g> is an optional IGraph supporting the logging ontology, (default log-graph)
+  - `entry-id` is a KWI identifying a log event in `g`
+  - `g` is an optional IGraph supporting the logging ontology, (default log-graph)
     This is typically either the current log-graph or a copy of the log-grpah
     from a previous session.
-  <entry-type> is :all or the ID of some entry type.
+  - `entry-type` is :all or the ID of some entry type.
   "
   ([]
    (entries @log-graph :all))
@@ -351,12 +351,12 @@ Where
 
 
 (defn ith-entry
-  "Returns [<entry-id> <description>] for ith execution order  in `g`
+  "Returns [`entry-id` `description`] for ith execution order  in `g`
     (default @graph-log)
   Where
-  <entry-id> is keyword naming the entry
-  <description> is the normal-form description of <entry-id> in <g>
-  <g> is a log-graph (@log-graph by default)
+  - `entry-id` is keyword naming the entry
+  - `description` is the normal-form description of `entry-id` in `g`
+  - `g` is a log-graph (@log-graph by default)
   "
   ([i]
    (ith-entry @log-graph i))
@@ -368,8 +368,8 @@ Where
 (defn show
   "Returns contents of `entry-id` for optional `g` 
   Where
-  <entry-id> is the KWI of an entry
-  <g> is a log-graph (default @log-graph)
+  - `entry-id` is the KWI of an entry
+  - `g` is a log-graph (default @log-graph)
   "
   ([entry-id]
    (igraph/get-p-o @log-graph entry-id))
@@ -380,11 +380,11 @@ Where
 
 
 (defn query-log
-  "Returns [<bmap>, ....] for `q` posed to optional `g`
+  "Returns [`bmap`, ....] for `q` posed to optional `g`
   Where
-  <bmap> := {<var> <value>, ...} bindings to <q> posed to <g>
-  <q> is a query in a format amenable to <g>
-  <g> is an IGraph supporting the graph-log vocabulary (default @log-graph)
+  - `bmap` := {`var` `value`, ...} bindings to `q` posed to `g`
+  - `q` is a query in a format amenable to `g`
+  - `g` is an IGraph supporting the graph-log vocabulary (default @log-graph)
   "
   ([q]
    (query-log @log-graph q))
@@ -395,24 +395,24 @@ Where
 ^{vocabulary [:glog/executionOrder
               ]}
 (defn search 
-  "Returns [c found [previous-index]] for `entry-test` of <i>th  entry per `q` and inc-or-dec
+  "Returns [c found [previous-index]] for `entry-test` of `i`th  entry per `q` and inc-or-dec
   See also the IGraph docs for traversal functions.
 
   Where
-  <c> is the (ignored) traversal context
-  <found> is nil or the first previous entry to pass <test>
-  <previous-index> decrements the head of <q>, or empty if found or <i> < 0
-  <entry-test> := fn [g entry] -> boolean
-  <q> := [<entry> or <i> [i] if still searching or [] if found. inc/dec-ing
+  -  `c` is the (ignored) traversal context
+  - `found` is nil or the first previous entry to pass `test`
+  - `previous-index` decrements the head of `q`, or empty if found or `i` < 0
+  - `entry-test` := fn [g entry] -> boolean
+  - `q` := [`entry` or `i` [i] if still searching or [] if found. inc/dec-ing
     per iteration
-  <i> is the execution order to test
-  <inc-or-dec> :~ #{inc dec}, inc to search forward dec to search backward.
-  <entry> is the <i>th entry in <g>
-  <g> is a log-graph.
-NOTE: typically this is used as a partial application over <test>
-(igraph/traverse <log> (partial search-backward <test>)
+  - `i` is the execution order to test
+  - `inc-or-dec` :~ #{inc dec}, inc to search forward dec to search backward.
+  - `entry` is the `i`th entry in `g`
+  - `g` is a log-graph.
+  - NOTE: typically this is used as a partial application over `test`
+(igraph/traverse `log` (partial search-backward `test`)
                                  nil
-                                 [<entry-id>])
+                                 [`entry-id`])
 "
   [inc-or-dec entry-test g c found q]
   {:pre [(fn? entry-test)
@@ -453,9 +453,9 @@ NOTE: typically this is used as a partial application over <test>
 (defn search-backward 
   "Searches the log backward for a match to `test`, starting at `start`
   Where
-  <test> := fn [g entry] -> boolean
-  <start> is an integer indexing the (entries g) (default end of entries)
-  <g> is the log-graph
+  - `test` := fn [g entry] -> boolean
+  - `start` is an integer indexing the (entries g) (default end of entries)
+  - `g` is the log-graph
   "
   ([test]
    (search-backward @log-graph test (dec (count (entries)))))
@@ -469,9 +469,9 @@ NOTE: typically this is used as a partial application over <test>
 (defn search-forward 
   "Searches the log forward for a match to `test` starting at `start`
   Where
-  <test> := fn [g entry] -> boolean
-  <start> is an integer indexing (entries g) (default 0)
-  <g> is the log-graph
+  - `test` := fn [g entry] -> boolean
+  - `start` is an integer indexing (entries g) (default 0)
+  - `g` is the log-graph
   "
   ([test]
    (search-forward @log-graph test 0))
@@ -514,7 +514,7 @@ NOTE: typically this is used as a partial application over <test>
     logs. Timestamps are removed, and compiled objects are replaced with
     :compiled
   Where
-  <g> is an optional log-graph from the current or past sessions. Default
+  - `g` is an optional log-graph from the current or past sessions. Default
     is current @log-graph
   "
   ([]
@@ -556,7 +556,7 @@ NOTE: typically this is used as a partial application over <test>
 (defn compare-shared-entries 
   "Returns an IGraph containing content shared between `g1` and `g2`
 Where
-<g1>, <g2> are @log-graph's from two different sessions.
+  - `g1`, `g2` are @log-graph's from two different sessions.
 "
   [g1 g2]
   (let [shared-keys (set/intersection (set (igraph/subjects g1))
@@ -569,11 +569,11 @@ Where
      (remove-variant-values g2'))))
 
 (defn find-divergence 
-  "Returns [<same> [<e1> <e2>] for `log1` and `log2`
+  "Returns [`same> [`e1> `e2>] for `log1` and `log2`
 Where
-<same> := [<shared-event>, ...]
-<e1>, <e2> name events whose details differ between <log1> and <log2>
-<log1> <log2> are @log-graph's from two different sessions, 
+  - `same> := [`shared-event>, ...]
+  - `e1>, `e2> name events whose details differ between `log1> and `log2>
+  - `log1> `log2> are @log-graph's from two different sessions, 
   typically reflecting some minor change in the same code base.
 "
   [log1 log2]
