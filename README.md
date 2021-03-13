@@ -36,7 +36,7 @@ Available at [Clojars](https://clojars.org/ont-app/graph-log).
 
 [![Clojars Project](https://img.shields.io/clojars/v/ont-app/graph-log.svg)](https://clojars.org/ont-app/graph-log)
 
-Cljdoc.org hosts [documentation](https://cljdoc.org/d/ont-app/graph-log/0.1.1).
+Cljdoc.org hosts [documentation](https://cljdoc.org/d/ont-app/graph-log/0.1.2).
 
 ```
 (ns ....
