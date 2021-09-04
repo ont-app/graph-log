@@ -125,7 +125,7 @@
     (is (= (debug ::demo-log-level)
            :ont-app.graph-log.core-test/demo-log-level_0))
 
-    (glog/set-level! :glog/LogGraph :glog/WARN)
+    (glog/set-level! :glog/WARN)
 
     (is (= (debug ::demo-log-level)
            nil))

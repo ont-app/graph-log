@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file. This change
 - Archiving is done through core.async channels, broken out into its
   own module.
 - Show now takes 1-3 arguments.
+- set-level! now takes 1 or 2 argements, with 1-arg implying :LogGraph
+  as the `element` argument.
 
 ## 0.1.2 
 - Archiving is done in a separate thread by an agent called _archiver_.

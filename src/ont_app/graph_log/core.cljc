@@ -142,8 +142,10 @@ Where
   - `args` := [`predicate` `object`, ...]
   - `element` is an element of the log-graph
 "
-  [element level]
-  (swap! log-graph assert-unique element :glog/level level))
+  ([level]
+   (set-level! :glog/LogGraph level))
+  ([element level]
+  (swap! log-graph assert-unique element :glog/level level)))
 
 (defn annotate! 
   "Side-effect, adds `args` to entry for `element` in log-graph
