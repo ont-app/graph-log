@@ -483,7 +483,7 @@ or we can also reset the log level at any time thus:
 
 ```
 > (when (= whos-asking "Douglas")
-    (glog/set-level! :glog/LogGraph :glog/level :glog/DEBUG))
+    (glog/set-level! :glog/DEBUG))
 ...
 ```
 
@@ -530,8 +530,8 @@ When logging levels are appropriate, standard logging messages will be
 issued regardless of the state of the log-graph:
 
 ```
-> (reset! glog/log-graph nil) ;; turning off all graph-logging
-> (:level timbre/*config*)
+> (reset! glog/log-graph) ;; turning off all graph-logging
+> (:min-level timbre/*config*)
 :debug
 > (debug :my-log/demoning-messages 
     :glog/message "This is a number: {{my-log/number}}"
@@ -552,7 +552,7 @@ effective logging level of a given entry-type with `glog/set-level!`.
 
 ```
 > (glog/log-reset!)
-> (glog/set-level! :glog/LogGraph :glog/INFO)
+> (glog/set-level! :glog/INFO)
 >
 > (glog/set-level! :my-log/demoing-log-level :glog/WARN)
 > (glog/show :my-log/demoing-log-level)
