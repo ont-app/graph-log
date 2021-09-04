@@ -5,17 +5,16 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [;; deps adjustments
                  [com.taoensso/timbre "5.1.2"] ;;
-                 [org.clojure/clojure "1.10.1"]
-                 [org.clojure/clojurescript "1.10.773"]
-                 [org.clojure/core.async "1.3.610"]
+                 [org.clojure/clojure "1.10.3"]
+                 [org.clojure/clojurescript "1.10.879"]
+                 [org.clojure/core.async "1.3.618"]
                  [org.clojure/spec.alpha "0.2.194"]
-                 [com.google.errorprone/error_prone_annotations "2.4.0"]
-                 [org.clojure/tools.reader "1.3.3"]
+                 [com.google.errorprone/error_prone_annotations "2.9.0"]
                  ;; 3rd party libraries
                  [cljstache "2.0.6"]
                  [lein-doo "0.1.11"] ;; cljs testing
                  ;;
-                 [ont-app/igraph "0.1.5"]
+                 [ont-app/igraph "0.1.7"]
                  [ont-app/igraph-vocabulary "0.1.2"] 
                  [ont-app/vocabulary "0.1.3"]
                  ]

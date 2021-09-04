@@ -27,6 +27,7 @@
    #?(:clj [ont-app.graph-log.levels :refer :all])
    #?(:cljs [ont-app.graph-log.levels :refer-macros [debug
                                                      fatal
+                                                     info
                                                      value-info
                                                      ]])
 
@@ -143,14 +144,11 @@
     (glog/log-reset!)
     )
   
-  (testing "Clear entries"
+ (testing "Clear entries"
     (glog/set-level! :glog/INFO)
     (info ::IWillBeCleared)
     (glog/log-reset! (glog/clear-entries @log-graph))
     (is (= (glog/entries) [])))
-
-  
-
   
   (testing "Searching forward and backward"
     (glog/log-reset!)
