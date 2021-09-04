@@ -134,6 +134,13 @@
   ([initial-graph]
    (reset! log-graph initial-graph)))
 
+
+(defn clear-entries
+  "Returns `g` with all entries removed"
+  [g]
+  (subtract g [:glog/LogGraph :glog/hasEntry]))
+
+
 ^{:vocabulary [:glog/level
                ]}
 (defn set-level! 
@@ -319,6 +326,8 @@ Where
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SUPPORT FOR VIEWING LOG CONTENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 
 ^{:vocabulary [:glog/executionOrder
                :rdf/type

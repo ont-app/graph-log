@@ -418,7 +418,7 @@ expressive entry names:
 > (def expressive-log 
     (add glog/ontology 
       [:my-log/whos-asking :rdf/type :glog/InformsUri]))
-> (glog/reset-log! expressive-log)
+> (glog/log-reset! expressive-log)
 > (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking "Douglas")
 :my-log/starting-get-the-answer_0_Douglas
 >
@@ -575,13 +575,23 @@ You can turn logging off by setting its level to `glog/OFF`
     (add glog/ontology 
        [:glog/LogGraph :glog/level :glog/OFF]))
 ...
-> (glog/reset-log! no-logging)
+> (glog/log-reset! no-logging)
 ...
 > (fatal :my-log/we-are-so-screwed!)
 ...
 > (glog/entries)
 []
 >
+```
+
+##### `glog/clear-entries`
+
+This function will return a log graph with all the current entries
+removed and preserve any additional configuration. The main use case
+is within the context of a log-reset!
+
+```
+> (glog/log-reset! (glog/clear-entries @glog/log-graph))
 ```
 
 <a name="Utilities"></a>
