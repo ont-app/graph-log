@@ -140,7 +140,15 @@
     
     (is (= (glog/entries)
            []))
-    (glog/log-reset!))
+    (glog/log-reset!)
+    )
+  
+  (testing "Clear entries"
+    (glog/set-level! :glog/INFO)
+    (info ::IWillBeCleared)
+    (glog/log-reset! (glog/clear-entries @log-graph))
+    (is (= (glog/entries) [])))
+
   
 
   
