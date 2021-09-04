@@ -58,18 +58,22 @@ Cljdoc.org hosts [documentation](https://cljdoc.org/d/ont-app/graph-log/0.1.2).
 
 This feature maintains a graph in memory, and is disabled by default.
 
-To enable:
+To enable, use [log-reset!](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#log-reset!):
+
 ```
 > (glog/log-reset!)
 #object[ont_app.igraph.graph.Graph yadda yadda]
 >
 ```
 
-This will instantiate a graph globally declared as `@glog/log-graph`,
-populated with the basic vocabulary that informs the graph-logging
-process.
+This will instantiate a atom containing a graph globally declared as
+`@glog/log-graph`, populated with the basic vocabulary that informs
+the graph-logging process.
 
-The minimal logging operation uses `glog/log!` and glog/log-value!:
+The minimal logging operation uses
+[glog/log!](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#log!)
+and
+[glog/log-value!](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#log-value!):
 
 ```
 > (defn get-the-answer [whos-asking]
@@ -83,7 +87,8 @@ Hello Douglas, here's the answer...
 >
 ```
 
-;; then in the repl, we can ask for a listing of entry names...
+...then in the repl, we can ask for a listing of entry names with
+[entries](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#entries)...
 
 ```
 > (glog/entries)
@@ -94,8 +99,10 @@ Hello Douglas, here's the answer...
 
 '0' and '1' here mark off the execution orders of each respective entry.
 
-We can ask for a description of any element of the `log-graph` in 
-[IGraph Normal Form](https://github.com/ont-app/igraph) with `show` ...
+We can ask for a description of any element of the `log-graph` in
+[IGraph Normal Form](https://github.com/ont-app/igraph#Normal_form)
+with
+[show](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#show) ...
 
 ```
 > (glog/show :my-log/starting-get-the-answer_0)
@@ -111,7 +118,8 @@ We can ask for a description of any element of the `log-graph` in
 0 ;; truthy
 ```
 
-... Or we can ask for a log entry by its _execution order_ ...
+... Or we can ask for a log entry by its _execution order_ with
+[ith-entry](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#ith-entry)...
 
 
 ```
@@ -155,7 +163,8 @@ Let's break out the KWIs in the example
 |:glog/value |the value returned by the expression being traced by any call to _glog/log-value!_|
 
 
-We can query `@log-graph` with `query-log`:
+We can query `@log-graph` with
+[query-log](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#query-log):
 
 ```
 > (glog/query-log 
@@ -211,7 +220,12 @@ lend themselves as inputs to helpful diagnostic functions.
 <a name="h4-simple-logging-levels"></a>
 #### Logging levels
 
-More commonly you'll probably want to attach logging statements to the usual logging levels. This can be done by swapping in say `info` or `value-info` expressions in place of `log!` and `log-value!` as follows:
+More commonly you'll probably want to attach logging statements to the
+usual logging levels. This can be done by swapping in say
+[info](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.levels#info)
+or
+[value-info](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.levels#value-info)
+expressions in place of `log!` and `log-value!` as follows:
 
 ```
 (ns ...
@@ -353,7 +367,8 @@ Let's break out the supporting ontology by category.
 
 The log-graph itself is identified by the KWI `:glog/LogGraph`. 
 
-The entry-count is fairly self-explanatory. There's a function to access it:
+The entry-count is fairly self-explanatory. There's a [function](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#entry-count) to access it:
+
 
 ```
 > (glog/entry-count)

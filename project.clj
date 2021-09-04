@@ -1,4 +1,5 @@
-(defproject ont-app/graph-log "0.1.3-SNAPSHOT"
+
+(defproject ont-app/graph-log "0.1.3"
   :description "An graph-based logging system for debugging"
   :url "https://github.com/ont-app/graph-log"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
