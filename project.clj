@@ -1,4 +1,3 @@
-
 (defproject ont-app/graph-log "0.1.3"
   :description "An graph-based logging system for debugging"
   :url "https://github.com/ont-app/graph-log"
