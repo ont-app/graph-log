@@ -1,22 +1,22 @@
-(defproject ont-app/graph-log "0.1.4"
+(defproject ont-app/graph-log "0.1.5"
   :description "An graph-based logging system for debugging"
   :url "https://github.com/ont-app/graph-log"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
-  :dependencies [;; deps adjustments
-                 [com.taoensso/timbre "5.1.2"] ;;
+  :dependencies [
+                 ;; deps adjustments
+                 [org.clojure/spec.alpha "0.3.218"]
+                 ;; clojure
                  [org.clojure/clojure "1.10.3"]
-                 [org.clojure/clojurescript "1.10.879"]
-                 [org.clojure/core.async "1.3.618"]
-                 [org.clojure/spec.alpha "0.2.194"]
-                 [com.google.errorprone/error_prone_annotations "2.9.0"]
+                 [org.clojure/core.async "1.5.648"
+                  :exclusions [[org.clojure/tools.reader]
+                               ]]
+                 [org.clojure/tools.logging "1.2.2"]
                  ;; 3rd party libraries
+                 [com.taoensso/timbre "5.1.2"]
                  [cljstache "2.0.6"]
-                 [lein-doo "0.1.11"] ;; cljs testing
-                 ;;
-                 [ont-app/igraph "0.1.7"]
-                 [ont-app/igraph-vocabulary "0.1.2"] 
-                 [ont-app/vocabulary "0.1.3"]
+                 ;; ont-app libs
+                 [ont-app/igraph-vocabulary "0.1.3"]
                  ]
   :plugins [[lein-codox "0.10.6"]
             [lein-cljsbuild "1.1.7"
@@ -47,7 +47,12 @@
            }
     }} ;; end cljsbuild
   :codox {:output-path "doc"}
-  :profiles {:uberjar {}}
+  :profiles {:uberjar {}
+             :dev {:dependencies [[lein-doo "0.1.11"]
+                                  [org.clojure/clojurescript "1.10.896"]
+                                  ]
+                   }
+             }
   :clean-targets
     ^{:protect false}
      ["resources/public/js/compiled"
