@@ -2,25 +2,20 @@
   (:require
    [clojure.string :as str]
    [clojure.set :as set]
-   #?(:clj [clojure.java.io :as io])
    #?(:clj [clojure.pprint :as pp]
       :cljs [cljs.pprint :as pp])
-
    ;; 3rd party libraries
-   [taoensso.timbre :as timbre]
    [cljstache.core :as stache]
    ;; ont-app libraries
    [ont-app.igraph.core :as igraph
     :refer [add
             assert-unique
-            difference
             query
             reduce-spo
             subjects
             subtract
             t-comp
             traverse
-            traverse-link
             ]]
    [ont-app.graph-log.ont :as ont]
    [ont-app.vocabulary.core :as voc]
@@ -38,16 +33,23 @@
   }
  )
 
-(def ontology ont/ontology)
+(def ontology
+  "A native-normal graph containing the graph-log ontology"
+  ont/ontology)
 
-(def the igraph/unique)
+(def the "alias for igraph/unique" igraph/unique)
 
-(def empty-graph (make-graph))
+(def empty-graph
+  "An instance of an empty native-normal graph."
+  (make-graph))
 
-(def log-graph (atom empty-graph))
+(def log-graph
+  "An atom holding the current graph to which new entries will be logged."
+  (atom empty-graph))
 
-
-(def default-log-level :glog/INFO)
+(def default-log-level
+  "Atom containing default log level. Initialized to :glog/INFO."
+  (atom :glog/INFO))
 
 (def level-priorities
   "Caches level priorities, to inform `level>=`"
@@ -93,7 +95,9 @@
    (enable-console-print!)
    )
 
-(defn timestamp []
+(defn timestamp
+  "Returns the timestamp associated with the current moment in epoch ms."
+  []
   #?(:clj
      (System/currentTimeMillis)
      )
@@ -109,6 +113,11 @@
   "True iff archiving is enabled for `g`
   Where:
   - `g` is an IGraph being used as a log-graph (default [[log-graph]])
+
+  VOCABULARY:
+  <log graph> `:glog/archiveDirectory` <directory>
+  <log graph> `:glog/archivePathFn` <path fn kw>
+  <path fn kw> `:igraph/compiledAs` <fn [g] -> directory>
   "
   ([]
    (archiving? @log-graph))
@@ -136,18 +145,23 @@
 
 
 (defn clear-entries
-  "Returns `g` with all entries removed"
+  "Returns `g` with all entries removed
+
+  VOCABULARY:
+  `:glog/LogGraph` `:glog/hasEntry` <entry>
+  "
   [g]
   (subtract g [:glog/LogGraph :glog/hasEntry]))
 
 
-^{:vocabulary [:glog/level
-               ]}
 (defn set-level! 
   "Side-effect, adds `args` to entry for `element` in log-graph
 Where
   - `args` := [`predicate` `object`, ...]
   - `element` is an element of the log-graph
+
+VOCABULARY:
+  - <log-graph or entry> `:glog/level` <level>
 "
   ([level]
    (set-level! :glog/LogGraph level))
@@ -172,17 +186,16 @@ Where
 ;; SUPPORT FOR ENTERING TO LOG
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-^{:vocabulary [:glog/LogGraph
-               :glog/entryCount
-               ]}
 (defn entry-count
-  "Returns the number of entries in `g` (default @log-graph)"
+  "Returns the number of entries in `g` (default @log-graph)
+
+  VOCABULARY:
+  `:Glog/LogGraph` `:glog/entryCount` <# of entries>
+  "
   ([] (entry-count @log-graph))
   ([g] (or (the (g :glog/LogGraph :glog/entryCount))
            0)))
 
-^{:vocabulary [:glog/message
-               ]}
 (defn std-logging-message 
   "Returns: a string suitable for standard logging based on `args`, or nil
   if there is no :glog/message specification.
@@ -194,6 +207,9 @@ Where
   Of the form `yadda {{<p>}} yadda...'
   - `desc-map` := {`p` `o`, ...}, minus any :glog/message. Specifying `o`'s to be 
   inserted into `template`.
+
+  VOCABULARY:
+  <entry> `:glog/message` <message mustache template>
 "
   [& args]
   {:pre [(even? (count args))]
@@ -209,21 +225,11 @@ Where
                         ])
         [messages desc] (reduce collect-msgs [[]{}] (partition 2 args))
          ]
-     (if-not (empty? messages)
+     (when-not (empty? messages)
        (str/join "\n" (map (fn [msg] (stache/render msg desc))
                            messages)))))
 
 
-^{:vocabulary [:rdf/type
-               :rdfs/subClassOf
-               :glog/InformsUri
-               :glog/Entry
-               :glog/LogGraph
-               :glog/entryCount
-               :glog/timestamp
-               :glog/executionOrder
-               :glog/hasEntry
-               ]}
 (defn log! 
   "Side-effect: adds an entry to log-graph for `id` minted per `entry-type` and `args`
   Returns: `id` or nil (if no entry was made)
@@ -234,6 +240,16 @@ Where
   - `args` := [`arg-kwi` `value`, ...]
   Note: Any issues relating to log levels should be handled before calling this
   function.
+
+  VOCABULARY
+  - :glog/InformsUri - type for a property referred to when minting URIs
+  - :glog/Entry - type for log entries
+  - :glog/LogGraph - Names @log-graph in @log-graph
+  - <log graph> :glog/entryCount <number of entries in the graph>
+  - <log graph> :glog/hasEntry <entry>
+  - <entry> :glog/timestamp <time of event in epoch ms>
+  - <entry> :glog/executionOrder <int representing that entry is ith event executed>
+
   "
   [entry-type & args]
   (when (not (even? (count args)))
@@ -272,8 +288,7 @@ Where
                                (reduce collect-if-informs-uri
                                        (vec (filter some?
                                                     [entry-type
-                                                     ;; still making up my mind
-                                                     #_(the (g :glog/LogGraph
+                                                     (the (g :glog/LogGraph
                                                              :glog/iteration))
                                                      execution-order]))
                                        (partition 2 args))))
@@ -296,8 +311,6 @@ Where
         @id-atom
         ))))
 
-^{:vocabulary [:glog/value
-               ]}
 (defn log-value!
   "Returns `value`
   Side effect: logs <id> :glog/value `value`, plus `other-args` into log-graph
@@ -308,6 +321,9 @@ Where
   - `entry` is an entry in @glog/log-graph
   - `p` is a keyword naming a property of `entry`
   - `o` is a value asserted for `p` s.t. [`entry` `p` `o`] in the log.
+
+  VOCABULARY
+  - <entry> :glog/value <value of some eval'd expression>
   "
   ([entry-type value]
    (log-value! entry-type [] value)
@@ -329,11 +345,6 @@ Where
 
 
 
-^{:vocabulary [:glog/executionOrder
-               :rdf/type
-               :glog/LogGraph
-               :glog/hasEntry
-               ]}
 (defn entries
   "Returns [`entry-id`, ...] for `entry-type` in `g` ordered by :glog/executionOrder
   Where
@@ -342,6 +353,11 @@ Where
     This is typically either the current log-graph or a copy of the log-grpah
     from a previous session.
   - `entry-type` is :all or the ID of some entry type.
+
+  VOCABULARY
+  - `:glog/LogGraph` - Names @log-graph in @log-graph
+  - <log graph> `:glog/hasEntry` <entry>
+  - <entry> `:glog/executionOrder` <int representing that entry is ith event executed>
   "
   ([]
    (entries @log-graph :all))
@@ -352,14 +368,13 @@ Where
   ([g entry-type]
    (let [execution-order (fn [entry] (the (g entry :glog/executionOrder)))
          matches-type? (fn [entry] (g entry :rdf/type entry-type))
-         _entries (sort-by execution-order (g :glog/LogGraph :glog/hasEntry))
+         entries' (sort-by execution-order (g :glog/LogGraph :glog/hasEntry))
          ]
      (into []
            (if (= entry-type :all)
-             _entries
+             entries'
              ;; else
-             (filter matches-type? _entries))))))
-
+             (filter matches-type? entries'))))))
 
 (defn ith-entry
   "Returns [`entry-id` `description`] for ith execution order  in `g`
@@ -377,10 +392,12 @@ Where
      
 
 (defn show
-  "Returns contents of `entry-id` for optional `g` 
+  "Returns contents of `entry-id` for optional `g` `p` and `o`
   Where
   - `entry-id` is the KWI of an entry
   - `g` is a log-graph (default @log-graph)
+  - `p` specifies a property of the entry
+  - `o` tests for a specific object
   "
   ([entry-id]
    (igraph/get-p-o @log-graph entry-id))
@@ -403,8 +420,6 @@ Where
    (query g q)))
 
 ;; traversal function
-^{vocabulary [:glog/executionOrder
-              ]}
 (defn search 
   "Returns [c found [previous-index]] for `entry-test` of `i`th  entry per `q` and inc-or-dec
   See also the IGraph docs for traversal functions.
@@ -420,12 +435,16 @@ Where
   - `inc-or-dec` :~ #{inc dec}, inc to search forward dec to search backward.
   - `entry` is the `i`th entry in `g`
   - `g` is a log-graph.
+  - NOTE: typically we'd use `search-forward` or `search-backward` which wrap this fn.
   - NOTE: typically this is used as a partial application over `test`
-(igraph/traverse `log` (partial search-backward `test`)
+    (igraph/traverse `g` (partial search-backward `test`)
                                  nil
                                  [`entry-id`])
+
+  VOCABULARY
+  - <entry> `:glog/executionOrder` <int indicating event is ith event executed>
 "
-  [inc-or-dec entry-test g c found q]
+  [inc-or-dec entry-test g c _found q]
   {:pre [(fn? entry-test)
          ]
    }
@@ -450,7 +469,7 @@ Where
         ]
     [(assoc c :entries _entries)
      ,
-     (if found? entry)
+     (when found? entry)
      ,
      (if (or found?
              (= entry :out-of-bounds)
@@ -500,12 +519,16 @@ Where
 ;; change in your code and compare the results
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-^{:vocabulary [:glog/timestamp
-               :glog/LogGraph
-               :glog/hasEntry
-               ]}
 (defn remove-timestamps 
-  "Spurious difference between two logs"
+  "Removes timestamps, a spurious difference between two otherwise equivalent log entries.
+
+  NOTE: typically used to compare two otherwise identical logs.
+
+  VOCABULARY:
+  - `:glog/LogGraph` - Names @log-graph in @log-graph
+  - <log graph> `:glog/hasEntry` <entry>
+  - <entry> `:glog/timestamp` <time of event in epoch ms>
+  "
   ([]
    (remove-timestamps @log-graph))
   ([g]
@@ -540,7 +563,7 @@ Where
              (assoc m k (cond
                           (compiled? v) :compiled
                           (coll? v) (remove-variants v)
-                          :default v)))
+                          :else v)))
 
            (empty-for [coll] (cond (vector? coll) []
                                    (set? coll) #{}
@@ -552,14 +575,14 @@ Where
                (coll? x) (into (empty-for x)
                                (map remove-variants x))
                (compiled? x) :compiled
-               :default x))
+               :else x))
                      
            (remove-spo-variants [g s p o]
              (cond
                (compiled? o) (add g [s p :compiled])
                (coll? o) (add g [s p (remove-variants o)])
                (= p :glog/timestamp) g
-               :default (add g [s p o])
+               :else (add g [s p o])
                ))
            ]
      (reduce-spo remove-spo-variants empty-graph g))))
@@ -583,9 +606,10 @@ Where
   "Returns [`same> [`e1> `e2>] for `log1` and `log2`
 Where
   - `same> := [`shared-event>, ...]
-  - `e1>, `e2> name events whose details differ between `log1> and `log2>
-  - `log1> `log2> are @log-graph's from two different sessions, 
-  typically reflecting some minor change in the same code base.
+  - `e1`, `e2` name events whose details differ between `log1` and `log2`
+  - `log1` `log2` are @log-graph's from two different sessions,
+  NOTE: typically called during debugging reflecting some minor change in the same code
+  base.
 "
   [log1 log2]
   (letfn [(sub-graph [g e]
@@ -605,7 +629,7 @@ Where
               [(sub-graph log1 e1) nil]
               e2
               [nil (sub-graph log2 e2)]
-              :default nil))]
+              :else nil))]
               
   (loop [same []
          ;; [<entry-id>, ...] ...
@@ -624,6 +648,11 @@ Where
       [same nil]))))
 
 (defn report-divergence [g1 g2]
+  "Side-effect: prints a graph containing the divergence between `g1` and `g2`
+Where
+- `g1` is one graph
+- `g2` is another graph
+NOTE: typically used in debugging to show contrasting graphs after a code change."
   (let [[same [d1 d2]] (find-divergence g1 g2)
         ]
     (println "Shared:")
@@ -633,7 +662,3 @@ Where
     (println "In G2:")
     (pp/pprint (igraph/normal-form d2))
     [d1 d2]))
-
-;;(defn -main [& _] )
-
-

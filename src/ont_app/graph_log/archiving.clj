@@ -11,16 +11,13 @@
             go-loop
             timeout
             ]]
-   [clojure.java.io :as io]
    ;; 3rd party libraries
-   [taoensso.timbre :as timbre]
    [cljstache.core :as stache]
    ;; ont-app libraries
    [ont-app.igraph.core :as igraph
     :refer [add
             assert-unique
             difference
-            query
             reduce-spo
             t-comp
             ]]
@@ -30,66 +27,81 @@
             log-graph
             timestamp
             ]]
-   [ont-app.graph-log.ont :as ont]
-   [ont-app.graph-log.levels :refer :all]
    ))
 
-(def the igraph/unique)
+(def the "alias for igraph/unique" igraph/unique)
 
 ;; ASYNC DATA FLOW
 
+(def tap-listeners?
+  "Set to `true` when you want to tap> each article when it comes off a listener channel."
+  (atom false))
+
 (defmacro def-listener
+  "Expands to a go-loop which Binds to a `channel` a `handler`
+  Where
+  - `channel` is an async port
+  - `handler` := [article] -> ?, typically with the side-effect of archiving `article`
+  - `article` is an item read from `channel` asynchronously. Typically in a format
+    specific to `channel`.
+  "
   [channel handler]
   `(go-loop []
       (let [article# (<! ~channel)]
-        (timbre/trace "article:" article#)
+        (when @tap-listeners? (tap> (str "article:" article#)))
         (if article#
             (do
               (~handler article#)
               (recur))
             ;; else no article
-            (let [] (Thread/sleep 10) (recur))))))
+              (recur)
+              ))))
   
-(def log-reset>>archive-to-file
-  "A channel which will call `archive-to-file` on each `article`
+(def ^:private >>log-is-resetting>>
+  "A channel which will call its handler (set in `def-listener`) on each `reset-state`
   Where
-  `archive-to-file` := fn [article] -> ? with side-effect of archving `old-graph`
-  `article` :=  {:old-graph ..., :new-graph ..., ...}
+  `handler` := fn [reset-state] -> ? with side-effect of archving `old-graph`
+  `reset-state` :=  {:old-graph ..., :new-graph ..., ...}
   `old-graph` is the old log-graph being reset to `new-graph`
   "
   (chan 1))
+
+;; by default, it writes to a canonically named file
 (declare archive-to-file)
-(def-listener log-reset>>archive-to-file archive-to-file)
+(def-listener >>log-is-resetting>> archive-to-file)
 
-
-(def file-archived>>set-continuing-from
-  "A channel which will call `set-continuing-from` on each `article`
+(def ^:private >>log-is-archived>>
+  "A channel containing a series of `archive-state`s  reflecting the fact that the old log has been archived and a new one has been declared.
+  Typically handlers of this channel will call `set-continuing-from!` on each
+  `archive-state` to link the new log-graph back to the archive of the previous graph.
   Where
-  - `set-continuing-from` := fn [article] -> ? with side-effect of setting
+  - `set-continuing-from!` := fn [archive-state] -> ? with side-effect of setting
     (@glog/log-graph :glog/LogGraph  :glog/continuingFrom) to `volume`
-  - `article` := {::volume ..., ...}
+  - `archive-state` := {::volume ..., ...}
   - `volume` is the file holding an edn representation of the previous
     incarnation of @glog/log-graph.
   "
   (chan 1))
-(declare set-continuing-from)
-(def-listener file-archived>>set-continuing-from set-continuing-from)
+
+;; by default call `set-continuing-from!`
+(declare set-continuing-from!)
+(def-listener >>log-is-archived>> set-continuing-from!)
 
 (defn wait-for
   "Returns: non-falsey `result` of `test`, or ::timeout after `ms` milliseconds. 
   Where
   - `result` is a truthy response from `test`
-  - `test` := fn [] -> truthy value
+  - `the-test` := fn [] -> truthy value
   - `ms` is max time to wait for `test` to be truthy
   "
-  ([_test ms]
+  ([the-test ms]
    (let [status (atom nil)
          listen (go-loop []
-                  (let [test-result (_test)]
+                  (let [test-result (the-test)]
                     (if test-result
                       test-result
-                      (do
-                        (recur)))))
+                      ;; else
+                      (recur))))
          ]
     (let [[result _] (<!! (go (alts! [listen (timeout ms)])))
           ]
@@ -99,39 +111,53 @@
     @status
     )))
 
-^{:vocabulary [:glog/LogGraph
-               :glog/archivePathFn
-               :igraph/compiledAs
-               :glog/timestamp
-               :glog/archiveDirectory]}
-(defn archive-path 
-  "Returns a canonical name for an archive file for a log
+(defn default-archive-path
+  "Returns rendering of `{{directory}}/{{start}}-{{stop}}.edn`
   Where
-  - <g> is a log-graph, Typically `glog:LogGraph`
+  - `directory` is (g :glog/LogGraph :glog/archiveDirectory) or /tmp
+  - `start` is the timestamp of the 0th entry
+  - `stop` is the timestamp of the nth entry
+
+  VOCABULARY
+  - <graph-log> `:glog/archiveDirectory` `directory` (optional; default /tmp)
+  - <log entry> `:glog/timestamp` <epoch ms>
   "
   [g]
-  (if-let [archive-path-fn (the (g :glog/LogGraph (t-comp [:glog/archivePathFn
-                                                           :igraph/compiledAs])))
+  (let [es (entries g)
+        date-string (fn [i]
+                      (str (if (= (count es) 0)
+                             (timestamp)
+                             (the (g (es i) :glog/timestamp)))))
+        ]
+    (stache/render
+     "{{directory}}/{{start}}-{{stop}}.edn"
+     {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
+                     "/tmp")
+      :start (date-string 0)
+      :stop (date-string (count es))
+      })))
+
+(defn archive-path 
+  "Returns a canonical name for an archive file for a log, caluclated per `archive-path-fn` derived from `g`
+  Where
+  - `g` is a log-graph, Typically `glog:LogGraph`
+  - `archive-path-fn` := [g] -> `archive-path`. Or `default-archive-path`
+
+  VOCABULARY:
+  - <log-graph> `:glog/archivePathFn` <fn kw>
+  - <log-graph> `:glog/timestamp` <timestamp>
+  - <log-graph> `:glog/archiveDirectory` <directory URL>
+  - <fn kw> `:igraph/compiledAs`  <fn [g] -> archive-path>
+  "
+  [g]
+  (when-let [archive-path-fn (or (the (g :glog/LogGraph (t-comp [:glog/archivePathFn
+                                                                 :igraph/compiledAs])))
+                                 default-archive-path)
            ]
     (archive-path-fn g)
-    ;; else no custom function...
-    (let [es (entries g)
-          date-string (fn [i]
-                        (str (if (= (count es) 0)
-                               (glog/timestamp)
-                               (the (g (es i) :glog/timestamp)))))
-          ]
-      (stache/render
-       "{{directory}}/{{start}}-{{stop}}.edn"
-       {:directory (or (the (g :glog/LogGraph :glog/archiveDirectory))
-                       "/tmp")
-        :start (date-string 0)
-        :stop (date-string (count es))
-        }))))
+    ))
 
-^{:vocabulary [:igraph/compiledAs
-               ]}
-(defn save-to-archive 
+(defn save-to-archive!
      "Side-effect: Writes contents of `g` to `archive-path`, after removing stuff that would choke a reader.
 Returns `archive-path` for `g`
 Where:
@@ -139,7 +165,11 @@ Where:
 - `archive-path` is a path to which the contents of `g` are written, generated 
   by (`archive-path-fn` `g`)
 - `archive-path-fn` is a compiled function asserted with `:glog/archivePathFn`, 
-   or the default function `glog/archive-path`.
+   or the default function `archive-path`.
+
+  VOCABULARY
+  - <log-graph> `:glog/archivePathFn` <fn kw>
+  - <fn kw> `:igraph/compiledA`s <fn>
 "
   ([archive-path g]
    (letfn [(remove-compiled [g s p o]
@@ -154,83 +184,86 @@ Where:
        (igraph/write-to-file archive-path g)))))
 
 (defn archive-to-file 
-     "Side-effects: writes `contents` from `article` to `archive-file` and posts `catalog-card` to `file-archived>>set-continuing-from`.
+  "Side-effects: writes `contents` inferred from `reset-state` to `archive-file` and posts `archive-state` to `>>log-is-archived>>`.
   Where
   - `contents` is `old-graph` minus `new-graph`, and anything that would choke a 
    reader, rendered in EDN.
-  - `article` := {::topic  ::LogReset
+  - `reset-state` := {::topic  ::log-reset
                   ::`old-graph` ... 
                   ::`new-graph` ...
                   }
-  - `catalog-card` := {::topic ::catalog
+  - `archive-state` := {::topic ::archive-state
                        ::volume `archive-file`,
-                       ...}, merged with `article`.
+                       ...}, merged with `reset-state`.
   - `old-graph` is the previous contents of a log-graph
   - `new-graph` is the newly reset log-graph
   - `archive-file` is the path to a the `contents` written to disk.
-"
-  [article]
-  (let []
-    (assert (not (= (::old-graph article)
-                    (::new-graph article))))
-    (let [old-graph (::old-graph article)
-          contents (difference old-graph
-                               (::new-graph article))
-          result (try (save-to-archive (archive-path old-graph)
-                                       contents)
-                      (catch Throwable e
-                        e))]
-      (go (>! file-archived>>set-continuing-from
-              ;; the catalog card...
-              (merge article
-                     {::topic ::catalog
-                      ::volume result
-                      }))))))
+  "
+  [reset-state]
+  (assert (not (= (::old-graph reset-state)
+                  (::new-graph reset-state))))
+  (let [old-graph (::old-graph reset-state)
+        contents (difference old-graph
+                             (::new-graph reset-state))
+        result  (save-to-archive! (archive-path old-graph)
+                                  contents)
+        ]
+    (go (>! >>log-is-archived>>
+            ;; the catalog card...
+            (merge reset-state
+                   {::topic ::archive-state
+                    ::volume result
+                    })))))
    
-^{:vocabulary [:glog/LogGraph,
-               :glog/continuingFrom]}
-(defn set-continuing-from 
-  "Side-effect: establishes :glog/coninuingFrom value per `catalog-card` in `gatom`
+(defn set-continuing-from!
+  "Side-effect: establishes :glog/coninuingFrom in value per `archive-state` in `gatom`
 Where
-  - `catalog-card` := {::volume `url`, ...}
+  - `archive-state` := {::volume `url`, ...}
   - `gatom` (optional) an atom containing an IGraph. Default is log-graph
-  - `url` is the URL of a location where the previous contents of @gatom
+  - `url` is the URL of a location where the previous contents of @log-graph
      have been archived. 
   - Note: may throw error of type ::UnexpectedArchivingResult.
+
+  VOCABULARY:
+  - `:glog/LogGraph`
+  - <log-graph> `:glog/continuingFrom` `url`
 "
-  ([catalog-card]
+  ([archive-state]
    (when (not (@log-graph :glog/LogGraph :glog/continuingFrom))
-     (if-let [url (::volume catalog-card)]
+     (if-let [url (::volume archive-state)]
        (reset! glog/log-graph
                (assert-unique
                 @log-graph
                 :glog/LogGraph :glog/continuingFrom url))
-       ;; else there is no volume in the card...
+       ;; else there is no volume in the archive-state
        (throw (ex-info "Unexpected archiving result"
                        {:type ::UnexpectedArchivingResult
-                        ::card catalog-card}))))))
+                        ::archive-state archive-state}))))))
 
-(def check-archiving-timeout (atom 1000))
+(def check-archiving-timeout
+  "The timeout in ms for the `check-archiving!` function. Default is 1000"
+  (atom 1000))
 
-^{:vocabulary [:glog/LogGraph
-               :glog/iteration
-               :glog/FreshArchive
-               :glog/continuingFrom
-               :rdf/type]}
-(defn check-archiving 
+(defn check-archiving!
   "Side-effect: sets the :glog/continuingFrom relation in `gatom`
   Where
   - `gatom` is an atom containing an IGraph, (default `log-graph`),
     it must be configured so as to enable archiving.
   - `ms` is a timeout in milliseconds
-  - `article` := {:glog/continuingFrom `url`, ...}
+  - `archive-state` := {:glog/continuingFrom `url`, ...}
   - `url` is typically the URL of the contents of the previous `gatom`,
     before the most recent call to `log-reset!`.
+
+  VOCABULARY:
+  - `:glog/LogGraph` - identifies the log graph itself in @log-graph
+  - `:glog/FreshArchive` - names type for LogGraph with 0 iterations
+  - `<log-graph> `:glog/iteration` <# of times graph has been reset>
+  - `<log-graph> `:glog/continuingFrom` <url of previous archived log iteration>
 "
   ([]
-   (check-archiving log-graph @check-archiving-timeout))
+   (check-archiving! log-graph @check-archiving-timeout))
   ([ms]
-   (check-archiving log-graph ms))
+   (check-archiving! log-graph ms))
   ([gatom ms]
    (let [iteration (or (the (@gatom :glog/LogGraph :glog/iteration))
                        0)
@@ -240,28 +273,30 @@ Where
          (swap! gatom assert-unique :glog/LogGraph :rdf/type :glog/FreshArchive)
          ;; else continuing...
          (let [result (wait-for (fn []
-                                  (Thread/sleep 10)
                                   (@gatom :glog/LogGraph :glog/continuingFrom))
                                 ms)]
            (when(= result ::timeout)
              (swap! gatom assert-unique :glog/LogGraph :rdf/type :glog/FreshArchive))))))))
 
-
-^{:vocabulary [:glog/LogGraph
-               :glog/iteration]}
 (defn log-reset!
-  "Side-effect: resets @log-graph to `initial-graph`
-  Side-effect: if (initial-graph:glog/SaveToFn igraph/compiledAs <path-fn>),
+  "Side-effect: resets @log-graph to `new-graph`
+  Side-effect: if (initial-graph:glog/ArchivePathFn igraph/compiledAs <path-fn>),
     the previous contents of the graph will be spit'd to <output-path>
   Where
   - <initial-graph> is an IGraph, informed by ont-app.graph-log.core/ontology
-  - <fn> := fn [g] -> <output-path>
+  - <path-fn> := fn [g] -> <output-path>
   - <output-path> is a valid path specification , possibly starting with file://
+
+  VOCABULARY
+  - `:glog/LogGraph` - identifies the log graph itself in @log-graph
+  - <log-graph> `:glog/iteration` <# of times graph has been reset>
+  - <log-graph> `:glog/archivePathFn` <fn kw>
+  - <fn kw> `:igraph/compiledAs` <fn [g] -> archive path>
   "
   ([]
    (log-reset! glog/ontology))
   ([new-graph]
-   (check-archiving) ;; maybe deref continuing-from async in last cycle.
+   (check-archiving!) ;; maybe deref continuing-from async in last cycle.
    ;; submit the transition state to the archiver channel...
    (when (not (= @log-graph new-graph))
      (let [old-graph @log-graph
@@ -273,10 +308,9 @@ Where
                                                    :glog/iteration))
                                              0)))
            ]
-       (go (>! log-reset>>archive-to-file
-             {::topic ::LogReset
+       (go (>! >>log-is-resetting>>
+             {::topic ::log-reset
               ::old-graph old-graph
               ::new-graph new-graph
               }))
        (glog/log-reset! new-graph)))))
-

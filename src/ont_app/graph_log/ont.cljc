@@ -56,6 +56,7 @@ rlog vocabulary."
         ]))
 
 (def ontology
+  "A native-normal graph containing descriptions of constructs informing the graph-log model."
   (let [g (graph/make-graph)]
     (voc/clear-caches!)
     (igraph/add
@@ -199,4 +200,3 @@ by archivePathFn. (only applicable if the local file system is used)"
 on the last reset."
        ]
       ])))
-    
