@@ -226,6 +226,16 @@
   (value-info ::test-value-info 42)
   (value-info ::test-value-info [::asdf "asdf"] 43))
 
+
+
+(deftest issue-6-duplicate-values
+  (let [x (atom 0)
+        inc-x (fn [] (swap! x inc))]
+    (glog/log-reset!)
+    (value-info ::Issue6Test (inc-x))
+    (is (= @x 1)))) ;; would be 2 if (inc-x) gets called twice
+
+
 #_(deftest log-value-at-level
   (testing "log-value-at-level"
     (glog/log-reset!)

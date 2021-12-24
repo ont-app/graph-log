@@ -4,7 +4,7 @@ Code and a small ontology for logging to an
 [IGraph](https://github.com/ont-app/igraph) in clojure(script). It is
 part of the ont-app project.
 
-This this intended as a tool to be able to construct a graph of
+This is intended as a tool to be able to construct a graph of
 queryable, inter-related logging events which can serve as a basis for
 useful diagnostics.
 
@@ -13,7 +13,8 @@ It integrates with standard, string-based logging implemented with
 
 ## Contents
 - [Dependencies](#Dependencies)
-- [Simple usage](#Simple_usage)
+- [Quick start](#Quick_start)
+- [Basic Primitives](#Basic_primitives)
   - [Logging-levels](#h4-simple-logging-levels)
   - [Standard logging](#h4-standard-logging)
 - [More advanced usage](#More_advanced_usage)
@@ -53,10 +54,88 @@ Cljdoc.org hosts [documentation](https://cljdoc.org/d/ont-app/graph-log/0.1.2).
    ))
 ```
 
-<a name="Simple_usage"></a>
-### Simple usage
+<a name="Quick_start"></a>
+### Quick start
 
-This feature maintains a graph in memory, and is disabled by default.
+Here's a brief sketch of how you might typically use this...
+
+```
+(ns myNs
+ (:require 
+   [ont-app.graph-log.core :as glog]         ;; the graph-log library
+   [ont-app.graph-log.levels :refer :all]    ;; log level macros
+   ))
+
+
+> (defn get-the-answer [whos-asking]
+    (debug ::starting-get-the-answer
+       :glog/message "Starting get-the-answer for {{whos-asking}}"
+       :whos-asking whos-asking)
+    (println "Hello " whos-asking ", here's the answer...")
+    (value-info ::returning-get-the-answer 42))
+
+
+> (glog/log-reset!) ;; clears the log of entries and initiates with standard config
+> (glog/set-level! :glog/DEBUG)
+
+;; calling the function....
+
+> (get-the-answer "Douglas")
+2021-12-24T17:18:06.902Z DEBUG [myNs:?] - Starting get-the-answer for Douglas
+Hello Douglas, here's the answer...
+42
+>
+
+> (glog/entries)
+[:myNs/starting-get-the-answer_0
+ :nyNs/returning-get-the-answer_1]
+
+;; glog/show can take 1-3 arguments....
+
+> (glog/show :myNs/starting-get-the-answer_0)
+{:rdf/type #{:myNs/starting-get-the-answer},
+ :glog/timestamp #{1640355228253},
+ :glog/executionOrder #{0},
+ :whos-asking #{"Douglas"}}
+
+> (glog/show :myNs/starting-get-the-answer_0 :whos-asking)
+#{"Douglas"}
+
+> (glog/show :myNs/starting-get-the-answer_0 :whos-asking "Douglas")
+"Douglas"
+
+;; We can get the ith entry...
+
+> (glog/ith-entry 1)
+;; ... returns [<kw> <description>] ...
+[:myNs/returning-get-the-answer_1
+ {:rdf/type #{:myNs/returning-get-the-answer},
+  :glog/timestamp #{1640355626388},
+  :glog/executionOrder #{1},
+  :glog/value #{42}}]
+  
+
+> (-> (glog/ith-entry 1) first (glog/show :glog/value))
+#{42}
+
+;; We can query with basic graph patterns...
+
+> (glog/query-log [[:?entry :glog/value 42]
+                   [:?entry :glog/timestamp :?timestamp]])
+                   
+#{{:?entry :myNs/returning-get-the-answer_1,
+   :?timestamp 1640355626388}}
+```
+
+The expressions `(debug...)` and `(value-info...)` are based on macros
+defined in `ont-app.graph-log.levels`. These macros invoke a more basic set of primitives, described below.
+
+
+<a name="Basic_primitives"></a>
+### Basic primitives
+
+
+This feature maintains a graph as an atom in memory. Logging in this graph is disabled by default, leaving only standard logging through `:glog/message`.
 
 To enable, use [log-reset!](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#log-reset!):
 
@@ -77,9 +156,9 @@ and
 
 ```
 > (defn get-the-answer [whos-asking]
-    (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
+    (glog/log! :myNs/starting-get-the-answer :myNs/whos-asking whos-asking)
     (println "Hello " whos-asking ", here's the answer...")
-    (glog/log-value! :my-log/returning-get-the-answer 42))
+    (glog/log-value! :myNs/returning-get-the-answer 42))
 
 > (get-the-answer "Douglas")
 Hello Douglas, here's the answer...
@@ -92,8 +171,8 @@ Hello Douglas, here's the answer...
 
 ```
 > (glog/entries)
-[:my-log/starting-get-the-answer_0 
- :my-log/returning-get-the-answer_1]
+[:myNs/starting-get-the-answer_0 
+ :myNs/returning-get-the-answer_1]
 >
 ```
 
@@ -105,16 +184,16 @@ with
 [show](https://cljdoc.org/d/ont-app/graph-log/0.1.2/api/ont-app.graph-log.core#show) ...
 
 ```
-> (glog/show :my-log/starting-get-the-answer_0)
-{:rdf/type #{:my-log/starting-get-the-answer},
+> (glog/show :myNs/starting-get-the-answer_0)
+{:rdf/type #{:myNs/starting-get-the-answer},
  :glog/timestamp #{1576114979964},
  :glog/executionOrder #{0},
- :my-log/whos-asking #{"Douglas"}}
+ :whos-asking #{"Douglas"}}
 >
-> (glog/show :my-log/starting-get-the-answer_0 :glog/executionOrder)
+> (glog/show :myNs/starting-get-the-answer_0 :glog/executionOrder)
 #{0}
 >
-> (glog/show :my-log/starting-get-the-answer_0 :glog/executionOrder 0)
+> (glog/show :myNs/starting-get-the-answer_0 :glog/executionOrder 0)
 0 ;; truthy
 ```
 
@@ -124,8 +203,8 @@ with
 
 ```
 > (glog/ith-entry 1)
-[:my-log/returning-get-the-answer_1
- {:rdf/type #{:my-log/returning-get-the-answer},
+[:myNs/returning-get-the-answer_1
+ {:rdf/type #{:myNs/returning-get-the-answer},
   :glog/timestamp #{1576114979965},
   :glog/executionOrder #{1},
   :glog/value #{42}}]
@@ -153,13 +232,13 @@ Let's break out the KWIs in the example
 
 |KWI |Description |
 |--- |:---------- |
-|:my-log/starting-get-the-answer |coined _ad hoc_ to name a class of log entries|
-|:my-log/returning-get-the-answer |coined _ad hoc_ to name another class of log entries|
-|:rdf/type |This correponds to a [URI in RDF's public vocabulary](https://www.w3.org/TR/rdf-schema/#ch_type) to assert an instance of a class. Part of the ont-app's design philosophy involves leveraging and integrating with public vocabularies, without a direct dependency on the full RDF stack.  |
-|:my-log/returning-get-the-answer_1 |Minted automatically to name the (zero-based) 1th entry in the `log-graph`, an instance of _returning-get-the-answer_|
+|:myNs/starting-get-the-answer |coined _ad hoc_ to name a class of log entries|
+|:myNs/returning-get-the-answer |coined _ad hoc_ to name another class of log entries|
+|:rdf/type |This correponds to a [URI in RDF's public vocabulary](https://www.w3.org/TR/rdf-schema/#ch_type) to assert an instance of a class. Part of the ont-app's design philosophy involves leveraging and integrating with public vocabularies, without unnecessary direct dependencies on the full RDF stack.  |
+|:myNs/returning-get-the-answer_1 |Minted automatically to name the (zero-based) 1th entry in the `log-graph`, an instance of _returning-get-the-answer_|
 |:glog/timestamp |The timestamp in [milliseconds](https://en.wikipedia.org/wiki/Unix_time) associated with the entry |
 |:glog/executionOrder| Asserts that this is the ith entry in the `log-graph`|
-|:my-log/whos-asking |a property coined _ad hoc_ for the _starting-get-the-answer_ entry type.|
+|:whos-asking |a property coined _ad hoc_ for the _starting-get-the-answer_ entry type.|
 |:glog/value |the value returned by the expression being traced by any call to _glog/log-value!_|
 
 
@@ -168,10 +247,10 @@ We can query `@log-graph` with
 
 ```
 > (glog/query-log 
-    [[:?starting :rdf/type :my-log/starting-get-the-answer]
-     [:?starting :my-log/whos-asking :?asker]
+    [[:?starting :rdf/type :myNs/starting-get-the-answer]
+     [:?starting :whos-asking :?asker]
     ])
-#{{:?starting :my-log/starting-get-the-answer_0, :?asker "Douglas"}}
+#{{:?starting :myNs/starting-get-the-answer_0, :?asker "Douglas"}}
 >
 ```
 
@@ -186,28 +265,28 @@ An IGraph can also be applied as a function with 0, 1, 2, or 3 arities:
 > (@glog/log-graph)
 ;; ...(returns the entire graph contents in Normal Form)
 >
-> (@glog/log-graph :my-log/returning-get-the-answer_1)
-{:rdf/type #{:my-log/returning-get-the-answer},
+> (@glog/log-graph :myNs/returning-get-the-answer_1)
+{:rdf/type #{:myNs/returning-get-the-answer},
   :glog/timestamp #{1576114979965},
   :glog/executionOrder #{1},
   :glog/value #{42}}
 ;; ... (same as glog/show)
 >
 > (igraph/flatten-description
-    (@glog/log-graph :my-log/returning-get-the-answer_1))
-{:rdf/type :my-log/returning-get-the-answer,
+    (@glog/log-graph :myNs/returning-get-the-answer_1))
+{:rdf/type :myNs/returning-get-the-answer,
   :glog/timestamp 1576114979965,
   :glog/executionOrder 1,
   :glog/value 42}
 >
-> (@glog/log-graph :my-log/returning-get-the-answer_1 :glog/executionOrder)
+> (@glog/log-graph :myNs/returning-get-the-answer_1 :glog/executionOrder)
 #{1}
 >
 > (igraph/unique 
-    (@glog/log-graph :my-log/returning-get-the-answer_1 :glog/executionOrder))
+    (@glog/log-graph :myNs/returning-get-the-answer_1 :glog/executionOrder))
 1
 >
-> (@glog/log-graph :my-log/returning-get-the-answer_1 :glog/executionOrder 0)
+> (@glog/log-graph :myNs/returning-get-the-answer_1 :glog/executionOrder 0)
 nil 
 ;; ... truthy
 > 
@@ -235,9 +314,9 @@ expressions in place of `log!` and `log-value!` as follows:
    ...))
    
 (defn get-the-answer [whos-asking]
-    (info :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
+    (info :myNs/starting-get-the-answer :whos-asking whos-asking)
     (println "Hello " whos-asking ", here's the answer...")
-    (value-info :my-log/returning-get-the-answer 42))
+    (value-info :myNs/returning-get-the-answer 42))
 
 ```
 
@@ -257,9 +336,9 @@ configured directly using its API.
 Typically these are integrated into the levels macros
 
 ```
-> (info :my-log/starting-get-the-answer
-    :my-log/whos-asking whos-asking
-    :glog/message "{{{my-log/whos-asking}} is asking for the answer."
+> (info :myNs/starting-get-the-answer
+    :whos-asking whos-asking
+    :glog/message "{{{whos-asking}} is asking for the answer."
     )
 ```
 
@@ -400,7 +479,7 @@ ontology when we reset. We configure the log further by adding other assertions,
 As we saw above, each log expression creates a class of log entries if it doesn't already exist.
 
 ```
-> (glog/show :my-log/starting-get-the-answer)
+> (glog/show :myNs/starting-get-the-answer)
 {:rdfs/subClassOf #{:glog/Entry}, ...}
 >
 ```
@@ -414,12 +493,12 @@ You may also optionally add a message which will be printed to the
 traditional logging stream. It supports {{mustache}} templating:
 
 ```
-> (glog/log! :my-log/starting-get-the-answer 
-    :my-log/whos-asking "Douglas" 
+> (glog/log! :myNs/starting-get-the-answer 
+    :whos-asking "Douglas" 
     :glog/message "{{my-log/whos-asking}} is asking for the answer")
 
 19-12-14 23:50:33 INFO - Douglas is asking for the answer
-:my-log/starting-get-the-answer_2
+:myNs/starting-get-the-answer_2
 >
 ```
 
@@ -432,15 +511,16 @@ expressive entry names:
 ```
 > (def expressive-log 
     (add glog/ontology 
-      [:my-log/whos-asking :rdf/type :glog/InformsUri]))
+      [:whos-asking :rdf/type :glog/InformsUri]))
 > (glog/log-reset! expressive-log)
-> (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking "Douglas")
-:my-log/starting-get-the-answer_0_Douglas
+> (glog/log! :myNs/starting-get-the-answer :whos-asking "Douglas")
+:myNs/starting-get-the-answer_0_Douglas
 >
 ```
 
-This should only be used for properties whose values are expected to
-render well as strings.
+Note that "_Douglas" has been added to the end of the KWI. This should
+only be used for properties whose values are expected to render well
+as strings.
 
 <a name="h5-glog-annotate"></a>
 ##### `glog/annotate!`
@@ -450,8 +530,8 @@ You can use the `annotate!` function to add arbitrary triples to
 
 ```
 (glog/annotate! 
-  :my-log/starting-get-the-answer_0 
-  :my-log/attn-Mary 
+  :myNs/starting-get-the-answer_0 
+  :myNs/attn-Mary 
   "Mary does this look OK to you?")
 ...
 ```
@@ -511,15 +591,15 @@ Here are two examples, the first of which calls `log!` and the second of which c
 ```
 > (glog/log-reset! debugging-log)
 > (debug
-    :my-log/starting-get-the-answer 
-    :my-log/whos-asking "Douglas")
+    :myNs/starting-get-the-answer 
+    :whos-asking "Douglas")
 :my-log-starting-get-the-answer_1
 >
-> (value-debug :my-log/returning-get-the-answer 42)
+> (value-debug :myNs/returning-get-the-answer 42)
 42
 > (glog/entries)
-[:my-log/starting-get-the-answer_0 
- :my-log/returning-get-the-answer_1]
+[:myNs/starting-get-the-answer_0 
+ :myNs/returning-get-the-answer_1]
 >
 ``` 
 
@@ -539,7 +619,7 @@ cases where:
 
 In cases where the logging statment includes a `:glog/message` clause,
 the logging levels also inform standard messages, keyed to the value of
-(:level timbre/*config*).
+(:min-level timbre/*config*).
 
 When logging levels are appropriate, standard logging messages will be
 issued regardless of the state of the log-graph:
@@ -548,9 +628,9 @@ issued regardless of the state of the log-graph:
 > (reset! glog/log-graph) ;; turning off all graph-logging
 > (:min-level timbre/*config*)
 :debug
-> (debug :my-log/demoning-messages 
-    :glog/message "This is a number: {{my-log/number}}"
-    :my-log/number 42)
+> (debug :myNs/demoing-messages 
+    :glog/message "This is a number: {{number}}"
+    :number 42)
 yadda yadda WARN [yadda] - This is a number: 42
 nil
 > 
@@ -569,14 +649,14 @@ effective logging level of a given entry-type with `glog/set-level!`.
 > (glog/log-reset!)
 > (glog/set-level! :glog/INFO)
 >
-> (glog/set-level! :my-log/demoing-log-level :glog/WARN)
-> (glog/show :my-log/demoing-log-level)
+> (glog/set-level! :myNs/demoing-log-level :glog/WARN)
+> (glog/show :myNs/demoing-log-level)
 {:glog/level #{:glog/WARN}, 
  :rdfs/subClassOf #{:glog/Entry}}
 > ;; this will be logged in spite of 'debug' < 'info':
-> (debug :my-log/demoing-log-level) 
+> (debug :myNs/demoing-log-level) 
 > (glog/entries)
-[:my-log/demoing-log-level_0] 
+[:myNs/demoing-log-level_0] 
 >
 ```
 
@@ -592,7 +672,7 @@ You can turn logging off by setting its level to `glog/OFF`
 ...
 > (glog/log-reset! no-logging)
 ...
-> (fatal :my-log/we-are-so-screwed!)
+> (fatal :myNs/we-are-so-screwed!)
 ...
 > (glog/entries)
 []
@@ -621,7 +701,7 @@ is within the context of a log-reset!
 | :glog/archiveDirectory | Asserts the directory portion of the archive-path used by archivePathFn. (only applicable if the local file system is used) |
 | :glog/continuingFrom | Asserts the archive-path of the log previously archived on the last reset. |
 | :glog/iteration | Asserts the number of times the log in this lineage has been reset. |
-| :glog/FreshArchive | the class of archived logs which are the first in its lineage. |
+| :glog/FreshArchive | the class of archived logs which are the first in a lineage of achiving events. |
 
 The contents of `glog/log-graph` are by default held in memory until
 the log is reset. 
@@ -679,7 +759,7 @@ With this configuration, the following call:
 after adding an entry:
 
 ```
-> (info :my-log/Test-archiving)
+> (info :myNs/Test-archiving)
 ...
 > (archive/log-reset! archivable-log) 
 ```
@@ -726,15 +806,15 @@ IGraph-compliant graph implementation thus:
             (@glog/log-graph :glog/LogGraph :glog/continuingFrom)))))
 ...
 > (restored-log-graph)
-{:my-log/Test-archiving_0
- {:rdf/type #{:my-log/Test-archiving},
+{:myNs/Test-archiving_0
+ {:rdf/type #{:myNs/Test-archiving},
   :glog/timestamp #{157yadda-yadda},
   :glog/executionOrder #{0}},
  :glog/LogGraph
  #:glog{:archiveDirectory #{"/tmp/myAppLog"},
         :entryCount #{1},
-        :hasEntry #{:my-log/Test-archiving_0}},
- :my-log/Test-archiving
+        :hasEntry #{:myNs/Test-archiving_0}},
+ :myNs/Test-archiving
  {:glog/level #{:glog/INFO}, :rdfs/subClassOf #{:glog/Entry}}}
 >
 ```
@@ -750,9 +830,9 @@ function with the same signature, asserting something like:
 > (def archivable-log 
     (add glog/ontology
       [[:glog/LogGraph 
-        :glob/archivePathFn :my-log/MyArchivePathFn
+        :glob/archivePathFn :myNs/MyArchivePathFn
        ]
-       [:my-log/MyArchivePathFn 
+       [:myNs/MyArchivePathFn 
          :igraph/compiledAs my-ns/my-archive-path
         ]]))
 ...
@@ -772,12 +852,12 @@ In addition to `entries`, `show`, `ith-entry` discussed above, there are functio
 
 ```
 > (defn is-starting-get-the-answer? [g entry]
-    (g entry :rdf/type :my-log/starting-get-the-answer))
+    (g entry :rdf/type :myNs/starting-get-the-answer))
 ... 
 > (search-backward 
     is-starting-get-the-answer? 
-    :my-log/returning-get-the-answer_1) ;; or just `1`
-:my-log/starting-get-the-answer_0
+    :myNs/returning-get-the-answer_1) ;; or just `1`
+:myNs/starting-get-the-answer_0
 >
 ```
 
@@ -790,9 +870,9 @@ One use-case for `graph-log` is comparing two log-graphs after making a change.
 > (def the-answer 42)
 ...
 > (defn get-the-answer [whos-asking]
-    (glog/log! :my-log/starting-get-the-answer :my-log/whos-asking whos-asking)
+    (glog/log! :myNs/starting-get-the-answer :whos-asking whos-asking)
     (println "Hello " whos-asking ", here's the answer...")
-    (glog/log-value! :my-log/returning-get-the-answer the-answer))
+    (glog/log-value! :myNs/returning-get-the-answer the-answer))
 ...
 > (glog/log-reset!)
 ...
@@ -827,19 +907,19 @@ We can subtract configuration stuff with IGraphSet operations:
 ...
 > (A-and-B)
 {
-  :my-log/returning-get-the-answer 
+  :myNs/returning-get-the-answer 
     {:glog/level #{:glog/INFO}, :rdfs/subClassOf #{:glog/Entry}},
-  :my-log/starting-get-the-answer 
+  :myNs/starting-get-the-answer 
     {:glog/level #{:glog/INFO}, :rdfs/subClassOf #{:glog/Entry}},
   :glog/LogGraph 
-    #:glog{:hasEntry #{:my-log/returning-get-the-answer_1 :my-log/starting-get-the-answer_0}, :entryCount #{2}},
+    #:glog{:hasEntry #{:myNs/returning-get-the-answer_1 :myNs/starting-get-the-answer_0}, :entryCount #{2}},
   :igraph/Vocabulary 
     #:igraph{:compiledAs #{:compiled}}, 
-  :my-log/returning-get-the-answer_1 
-    {:rdf/type #{:my-log/returning-get-the-answer}, :glog/value #{}, :glog/executionOrder #{1}},
-  :my-log/starting-get-the-answer_0 
-    {:rdf/type #{:my-log/starting-get-the-answer}, 
-     :my-log/whos-asking #{"Douglas"}, 
+  :myNs/returning-get-the-answer_1 
+    {:rdf/type #{:myNs/returning-get-the-answer}, :glog/value #{}, :glog/executionOrder #{1}},
+  :myNs/starting-get-the-answer_0 
+    {:rdf/type #{:myNs/starting-get-the-answer}, 
+     :whos-asking #{"Douglas"}, 
      :glog/executionOrder #{0}}
 }
 > (def A-not-B (igraph/difference A (igraph/union glog/ontology A-and-B)))
@@ -874,7 +954,7 @@ the first point of divergence:
 
 ```
 > (let [[shared [ga gb]] (glog/find-divergence A B)] shared)
-[:my-log/starting-get-the-answer_0]
+[:myNs/starting-get-the-answer_0]
 > (let [[shared [ga gb]] (glog/find-divergence A B)] (ga))
 #:my-log{:returning-get-the-answer_1 #:glog{:value #{42}}}
 > (let [[shared [ga gb]] (glog/find-divergence A B)] (gb))
@@ -887,11 +967,11 @@ Or `report-divergence` will pprint a summary and return the contrasting graphs:
 ```
 > (glog/report-divergence A B)
 Shared:
-[:my-log/starting-get-the-answer_0]
+[:myNs/starting-get-the-answer_0]
 In G1:
-#:my-log{:returning-get-the-answer_1 #:glog{:value #{42}}}
+#:myNs{:returning-get-the-answer_1 #:glog{:value #{42}}}
 In G2:
-#:my-log{:returning-get-the-answer_1 #:glog{:value #{43}}}
+#:myNs{:returning-get-the-answer_1 #:glog{:value #{43}}}
 
 [#object[ont_app.igraph.graph.Graph 0x7069e763 "ont_app.igraph.graph.Graph@7069e763"]
  #object[ont_app.igraph.graph.Graph 0x813382c "ont_app.igraph.graph.Graph@813382c"]]

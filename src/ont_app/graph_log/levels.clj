@@ -8,17 +8,19 @@
    ))
 
 
-^{:vocabulary [:glog/message
-               ]}
 (defmacro apply-std-logging-fn-at-level
   [val level & args]
+  (let [args (if val
+               (reduce conj args [:glog/value val])
+               args)
+        ]
   `(let []
      (if (and (:min-level timbre/*config*)
               (glog/level>= ~level (:min-level timbre/*config*))
               (some (fn [x#] (= x# :glog/message)) (list ~@args)))
        ~(list (symbol "taoensso.timbre" (name level))
               `(apply glog/std-logging-message (list ~@args))))
-     ~val))
+     ~val)))
 
 ^{:vocabulary [:glog/LogGraph
                :glog/level
@@ -27,15 +29,15 @@
   }
 (defmacro apply-log-fn-at-level
   "Returns value of  `log-fn` on `entry-type` and `args` as appropriate for `level`, else return `default`
-  Where
-  <log-fn> is log! or value-log!, to be called only if appropriate for level.
-  <entry-type> is a keyword naming a type of entry
-  <args> := [<p> <o>, ...] for log!, [[<p> <o>, ...] <value>] for log-value!
-    These will only be evaluated if <level> is appropriate
-  <level> is the level of logging for the log statement, this may be overridden
-    by the level asserted for <entry-type>
-  <default> should be the value of  <log-fn> if it's log-value!, typically nil
-    for log!
+  - Where
+    - `log-fn` is log! or value-log!, to be called only if appropriate for level.
+    - `entry-type` is a keyword naming a type of entry
+    - `args` := [<p> <o>, ...] for log!, [[<p> <o>, ...] <value>] for log-value!
+      These will only be evaluated if <level> is appropriate
+    - `level` is the level of logging for the log statement, this may be overridden
+      by the level asserted for <entry-type>
+    - `default` should be the value of  <log-fn> if it's log-value!, typically nil
+      for log!
   "
   [default log-fn level entry-type & args]
   `(let [entry-level# (or (igraph/unique
@@ -113,27 +115,22 @@
    `(value-trace ~entry-type [] ~val))
   
   ([entry-type extras val]
-  (let [args (reduce conj extras  [:glog/value val])]
-    `(let []
-       (apply-std-logging-fn-at-level nil :trace ~@args)
+  (let []
+    `(let [val# ~val]
+       (apply-std-logging-fn-at-level val# :trace ~@extras)
        (apply-log-fn-at-level
-        ~val  glog/log-value! :glog/TRACE ~entry-type ~extras ~val)))))
+        val#  glog/log-value! :glog/TRACE ~entry-type ~extras val#)))))
 
-^{:vocabulary [:glog/value
-               :glog/INFO
-               ]
-  }
 (defmacro value-info
   ([entry-type val]
    `(value-info ~entry-type [] ~val))
   
   ([entry-type extras val]
-   (let [args (reduce conj extras  [:glog/value val])
-         ]
-     `(let []
-        (apply-std-logging-fn-at-level nil :info ~@args)
-        (apply-log-fn-at-level
-         ~val  glog/log-value! :glog/INFO ~entry-type ~extras ~val)))))
+   `(let [val# ~val]
+      (apply-std-logging-fn-at-level val# :info ~@extras)
+      (apply-log-fn-at-level
+       val#  glog/log-value! :glog/INFO ~entry-type ~extras val#))))
+  
 
 ^{:vocabulary [:glog/value
                :glog/DEBUG
@@ -144,11 +141,12 @@
    `(value-debug  ~entry-type [] ~val))
   
   ([entry-type extras val]
-   (let [args (reduce conj extras  [:glog/value val])]
-     `(let []
-        (apply-std-logging-fn-at-level nil :debug ~@args)
+   (let []
+     `(let [val# ~val]
+        (apply-std-logging-fn-at-level val# :debug ~@extras)
         (apply-log-fn-at-level
-         ~val  glog/log-value! :glog/DEBUG ~entry-type ~extras ~val)))))
+         val#  glog/log-value! :glog/DEBUG ~entry-type ~extras val#)))))
+
 
 ^{:vocabulary [:glog/value
                :glog/TRACE
@@ -159,11 +157,11 @@
    `(value-warn ~entry-type [] ~val))
   
   ([entry-type extras val]
-   (let [args (reduce conj extras  [:glog/value val])]
-    `(let []
-       (apply-std-logging-fn-at-level nil :warn ~@args)
+   (let []
+    `(let [val# ~val]
+       (apply-std-logging-fn-at-level val# :warn ~@extras)
        (apply-log-fn-at-level
-        ~val  glog/log-value! :glog/WARN ~entry-type ~extras ~val)))))
+        val#  glog/log-value! :glog/WARN ~entry-type ~extras val#)))))
 
 ^{:vocabulary [:glog/value
                :glog/ERROR
@@ -174,11 +172,11 @@
    `(value-error ~entry-type [] ~val))
   
   ([entry-type extras val]
-   (let [args (reduce conj extras  [:glog/value val])]
-     `(let []
-        (apply-std-logging-fn-at-level nil :error ~@args)
+   (let []
+     `(let [val# ~val]
+        (apply-std-logging-fn-at-level val# :error ~@extras)
         (apply-log-fn-at-level
-         ~val  glog/log-value! :glog/ERROR ~entry-type ~extras ~val)))))
+         val#  glog/log-value! :glog/ERROR ~entry-type ~extras val#)))))
 
 ^{:vocabulary [:glog/value
                :glog/FATAL
@@ -189,9 +187,9 @@
    `(value-fatal ~entry-type [] ~val))
   
   ([entry-type extras val]
-   (let [args (reduce conj extras  [:glog/value val])]
-     `(let []
-        (apply-std-logging-fn-at-level nil :fatal ~@args)
+   (let []
+     `(let [val# ~val]
+        (apply-std-logging-fn-at-level val# :fatal ~@extras)
         (apply-log-fn-at-level
-         ~val  glog/log-value! :glog/FATAL ~entry-type ~extras ~val)))))
+         val#  glog/log-value! :glog/FATAL ~entry-type ~extras val#)))))
 

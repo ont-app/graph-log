@@ -1,13 +1,14 @@
-(defproject ont-app/graph-log "0.1.5"
+(defproject ont-app/graph-log "0.1.6-SNAPSHOT"
   :description "An graph-based logging system for debugging"
   :url "https://github.com/ont-app/graph-log"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [
                  ;; deps adjustments
+                 [org.clojure/clojure "1.10.3"]
                  [org.clojure/spec.alpha "0.3.218"]
                  ;; clojure
-                 [org.clojure/clojure "1.10.3"]
+                 [ont-app/igraph-vocabulary "0.1.3"]
                  [org.clojure/core.async "1.5.648"
                   :exclusions [[org.clojure/tools.reader]
                                ]]
@@ -16,7 +17,7 @@
                  [com.taoensso/timbre "5.1.2"]
                  [cljstache "2.0.6"]
                  ;; ont-app libs
-                 [ont-app/igraph-vocabulary "0.1.3"]
+                 
                  ]
   :plugins [[lein-codox "0.10.6"]
             [lein-cljsbuild "1.1.7"
