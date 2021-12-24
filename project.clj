@@ -12,7 +12,7 @@
                  [org.clojure/core.async "1.5.648"
                   :exclusions [[org.clojure/tools.reader]
                                ]]
-                 [org.clojure/tools.logging "1.2.2"]
+                 [org.clojure/tools.logging "1.2.3"]
                  ;; 3rd party libraries
                  [com.taoensso/timbre "5.1.2"]
                  [cljstache "2.0.6"]
@@ -50,7 +50,7 @@
   :codox {:output-path "doc"}
   :profiles {:uberjar {}
              :dev {:dependencies [[lein-doo "0.1.11"]
-                                  [org.clojure/clojurescript "1.10.896"]
+                                  [org.clojure/clojurescript "1.10.914"]
                                   ]
                    }
              }
