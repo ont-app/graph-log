@@ -843,6 +843,21 @@ And of course then it would be up to you whether
 `my-ns/my-archive-path` availed itself of the
 `archiveDirectory` construct.
 
+#### Customizing the archiving function
+
+There are two aynchronous channels defined:
+- `>>log-is-resetting>>`
+  - a map describing the reset is posted to this channel with each
+    call to `reset!`.
+  - Currently bound to a handler with `(def-listener >>log-is-resetting>>> archive-to-file)`
+- `>>log-is-archived>>`
+  - a map describing the results of the archiving operation should be
+    posted to this channel whenever the archiving operation is
+    performed.
+  - Currently  bound to a handler with  `(def-listener >>log-is-archived>>> set-continuing-from!)`
+  
+
+The handlers can be reset with subsequent calls to `def-listener`.
 
 <a name="Searching_forward_and_backward"></a>
 ### Searching forward and backward

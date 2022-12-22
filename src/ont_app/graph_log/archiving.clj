@@ -57,7 +57,7 @@
               (recur)
               ))))
   
-(def ^:private >>log-is-resetting>>
+(def >>log-is-resetting>>
   "A channel which will call its handler (set in `def-listener`) on each `reset-state`
   Where
   `handler` := fn [reset-state] -> ? with side-effect of archving `old-graph`
@@ -70,7 +70,7 @@
 (declare archive-to-file)
 (def-listener >>log-is-resetting>> archive-to-file)
 
-(def ^:private >>log-is-archived>>
+(def >>log-is-archived>>
   "A channel containing a series of `archive-state`s  reflecting the fact that the old log has been archived and a new one has been declared.
   Typically handlers of this channel will call `set-continuing-from!` on each
   `archive-state` to link the new log-graph back to the archive of the previous graph.
