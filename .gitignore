@@ -1,9 +1,10 @@
+*#
 .cpcache/
 .nrepl-port
 .shadow-cljs/
-_project.clj
 cljs-test-runner-out/
 out/
+target/
 
 
 
