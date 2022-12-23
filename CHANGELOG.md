@@ -1,6 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+
 ## 0.2.0
 - project.clj -> deps.edn
 - Refactoring archive feature
@@ -11,8 +12,11 @@ All notable changes to this project will be documented in this file. This change
 
 ## 0.1.5
 - Dependency and documentation updates
+
 ## 0.1.4
 - Dependency updates
+- Fixed message behavior when graph-log not engaged.
+
 ## 0.1.3
 - Archiving is done through core.async channels, broken out into its
   own module.
