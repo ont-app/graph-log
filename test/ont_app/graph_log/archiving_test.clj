@@ -43,12 +43,12 @@
   (glog/log-reset! fresh-graph)
   ;; establishes the archive directory
   (glog/log! ::testing :test 1)
-  (time (archive/log-reset! fresh-graph))
+  (archive/log-reset! fresh-graph)
   ;; this will archive to spec'd directory
   ;; first reset will time out in check-archiving
-  (time (archive/wait-for (fn []
-                            (@glog/log-graph :glog/LogGraph :glog/continuingFrom))
-                          100))
+  (archive/wait-for (fn []
+                      (@glog/log-graph :glog/LogGraph :glog/continuingFrom))
+                    100)
   (is (some? (igraph/unique (@glog/log-graph
                              :glog/LogGraph :glog/continuingFrom))))
   (when (some? (igraph/unique (@glog/log-graph
@@ -82,14 +82,14 @@
   (glog/log-reset! fresh-graph)
   ;; establishes the archive directory
   (glog/log! ::testing :test 1)
-  (time (archive/log-reset! fresh-graph))
+  (archive/log-reset! fresh-graph)
   (glog/log! ::testing :test 2)
-  (time (archive/log-reset! fresh-graph))
+  (archive/log-reset! fresh-graph)
   ;; this will archive to spec'd directory
   ;; first reset will time out in check-archiving
-  (time (archive/wait-for (fn []
-                            (@glog/log-graph :glog/LogGraph :glog/continuingFrom))
-                          100))
+  (archive/wait-for (fn []
+                      (@glog/log-graph :glog/LogGraph :glog/continuingFrom))
+                    100)
   (is (= 2
          (igraph/unique (@glog/log-graph :glog/LogGraph :glog/iteration))))
   ;; clean up myAppLog directory.....

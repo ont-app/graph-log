@@ -1,4 +1,10 @@
 
+## Validate deps.edn
+
+.PHONEY: validate-deps
+validate-deps:
+	clojure -T:build validate-deps
+
 ## Update dependencies as needed....
 outdated:
 	clojure -M:outdated

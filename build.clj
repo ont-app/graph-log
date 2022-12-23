@@ -2,18 +2,35 @@
   "Adpated from https://github.com/seancorfield/deps-new/blob/develop/resources/org/corfield/new/lib/root/build.clj"
   (:refer-clojure :exclude [test])
   (:require [clojure.tools.build.api :as b] ; for b/git-count-revs
-            [org.corfield.build :as bb]))
+            [org.corfield.build :as bb]
+            [clojure.spec.alpha :as spec]
+            [clojure.tools.deps.specs :as deps-specs]
+            ))
 
 (def lib 'ont-app/graph-log)
 
 (def version "0.2.0-SNAPSHOT")
 
-(defn test "Run the tests." [opts]
+
+(defn validate-deps
+  "Throws an `ex-info` of type `::invalid-deps`, or returns `opts` unchanged"
+  [opts]
+  (println "Validating deps.edn...")
+  (spec/check-asserts true)
+  (spec/assert ::deps-specs/deps-map
+               (-> "deps.edn" (slurp) (clojure.edn/read-string)))
+  (println "deps.edn conforms to clojure.tools.deps.specs")
+  opts)
+
+(defn test "Run the tests."
+  [opts]
   (bb/run-tests opts))
 
-(defn ci "Run the CI pipeline of tests (and build the JAR)." [opts]
+(defn ci "Run the CI pipeline of tests (and build the JAR)."
+  [opts]
   (-> opts
       (assoc :lib lib :version version)
+      (validate-deps)
       (bb/run-tests)
       (bb/clean)
       (bb/jar)))
@@ -35,7 +52,8 @@
     (b/delete {:path "./.shadow-cljs"}))
   opts)
 
-(defn install "Install the JAR locally." [opts]
+(defn install "Install the JAR locally."
+  [opts]
   (-> opts
       (assoc :lib lib :version version)
       (bb/install)))
