@@ -11,12 +11,6 @@
 
 (def version "0.2.0-SNAPSHOT")
 
-(def scm-data {:url (str "https://github.com/" lib)
-               :connection (str "scm:git:git://github.com/" lib ".git")
-               :developerConnection (str "scm:git:ssh://git@github.com/" lib ".git")
-               })
-
-
 (defn validate-deps
   "Throws an `ex-info` of type `::invalid-deps`, or returns `opts` unchanged"
   [opts]
@@ -34,7 +28,7 @@
 (defn ci "Run the CI pipeline of tests (and build the JAR)."
   [opts]
   (-> opts
-      (assoc :lib lib :version version :scm scm-data)
+      (assoc :lib lib :version version)
       (validate-deps)
       (bb/run-tests)
       (bb/clean)
